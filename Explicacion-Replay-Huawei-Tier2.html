@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Replay del JWS de Huawei en Tier 2 — explicación</title>
+<style>
+  :root {
+    --brand: #001391;
+    --ink: #1F2937;
+    --muted: #46536D;
+    --line: #D6DCEB;
+    --bg: #F5F7FC;
+    --bad: #B91C1C;
+    --bad-bg: #FDECEC;
+    --good: #15803D;
+    --good-bg: #E8F7EE;
+    --warn: #B7791F;
+    --warn-bg: #FFF8E6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.55;
+  }
+  header { background: var(--brand); color: #fff; padding: 28px 40px; }
+  header h1 { margin: 0 0 6px; font-size: 24px; }
+  header p { margin: 0; opacity: .88; max-width: 900px; }
+  header code { background: rgba(255,255,255,.15); color: #fff; }
+  main { max-width: 1200px; margin: 0 auto; padding: 24px 40px 60px; }
+  h2 { color: var(--brand); border-bottom: 2px solid var(--brand); padding-bottom: 6px; margin-top: 44px; }
+  h3 { margin: 26px 0 8px; }
+  p, li { font-size: 15px; }
+  code { background: #EEF2FF; padding: 1px 5px; border-radius: 4px; font-size: 13.5px; }
+  pre {
+    background: #0F172A;
+    color: #E2E8F0;
+    padding: 16px 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+  .callout {
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    border: 1px solid;
+    border-left-width: 5px;
+  }
+  .callout.bad { background: var(--bad-bg); border-color: #F5C2C2; border-left-color: var(--bad); }
+  .callout.good { background: var(--good-bg); border-color: #BDE5CB; border-left-color: var(--good); }
+  .callout.warn { background: var(--warn-bg); border-color: #F1D49A; border-left-color: var(--warn); }
+  .callout > strong:first-child { display: block; margin-bottom: 4px; }
+  .card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin: 16px 0 24px;
+    overflow: hidden;
+  }
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line);
+    background: #FAFBFE;
+    gap: 12px;
+  }
+  .card-head h4 { margin: 0; font-size: 14.5px; }
+  .tag { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+  .tag.bad { background: var(--bad-bg); color: var(--bad); }
+  .tag.good { background: var(--good-bg); color: var(--good); }
+  .tag.neutral { background: #EEF2FF; color: var(--brand); }
+  .card-head button {
+    border: 1px solid var(--brand);
+    background: #fff;
+    color: var(--brand);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .card-head button:hover { background: var(--brand); color: #fff; }
+  .diagram { padding: 16px; overflow-x: auto; text-align: center; }
+  .diagram svg { max-width: 100%; height: auto; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+  table { border-collapse: collapse; width: 100%; background: #fff; font-size: 14px; margin: 12px 0; }
+  th, td { border: 1px solid var(--line); padding: 9px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--brand); color: #fff; }
+  td.yes { color: var(--good); font-weight: 600; }
+  td.no { color: var(--bad); font-weight: 600; }
+  td.part { color: var(--warn); font-weight: 600; }
+  .analogy {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin: 14px 0;
+  }
+  @media (max-width: 900px) { .analogy { grid-template-columns: 1fr; } }
+  .analogy div {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-size: 14px;
+  }
+  .analogy div b { display: block; color: var(--brand); margin-bottom: 4px; }
+  .jws {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 16px;
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .jws .hl { background: #FDE2E2; color: var(--bad); font-weight: 700; }
+  .jws .ok { background: #DCFCE7; color: var(--good); font-weight: 700; }
+  .tldr {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>¿Por qué el nonce local de Huawei en Tier 2 permite replay?</h1>
+  <p>Explicación del riesgo en el flujo Huawei Tier 2 de <code>smp-device-integrity-service</code> y de la propuesta: nonce derivado de la petición y registro de nonces usados en Redis.</p>
+</header>
+
+<main>
+
+<section class="tldr">
+  <strong>En una frase:</strong> hoy la app inventa el nonce y el servidor no tiene con qué compararlo. El JWS de Huawei prueba que <em>algún</em> dispositivo sano lo pidió hace poco, pero no <em>para qué petición</em>. Por eso el mismo JWS sirve para muchas peticiones distintas mientras siga dentro de la ventana de frescura.
+  <p style="margin:10px 0 0">La propuesta tiene dos partes y hacen falta las dos. <strong>Ligar el nonce a la petición</strong> impide usar el JWS para otra cosa. <strong>Registrarlo en Redis</strong> impide usarlo dos veces para la misma cosa.</p>
+</section>
+
+<h2>1. La idea con una analogía</h2>
+<div class="analogy">
+  <div><b>Hoy: un sello en blanco</b>Un notario sella una hoja que dice "documento revisado a las 10:00", pero la hoja no dice qué documento. Quien tenga la hoja puede grapar cualquier documento hasta que se considere "vieja".</div>
+  <div><b>Parte 1: el sello dice qué documento</b>La hoja ahora incluye la huella del documento. Si la grapas a otro, la huella no coincide y se rechaza.</div>
+  <div><b>Parte 2: el sello se anota en un libro</b>La ventanilla anota cada sello que recibe. Si alguien presenta la misma hoja con el mismo documento una segunda vez, ya figura en el libro y se rechaza.</div>
+</div>
+
+<h2>2. Cómo funciona hoy (diagrama del documento: "Tier 2, nonce local")</h2>
+<div class="card" data-diagram="current">
+  <div class="card-head"><h4>Flujo actual de Huawei Tier 2</h4><span class="tag neutral">Referencia</span></div>
+  <div class="diagram"></div>
+</div>
+
+<p>El servicio revisa la firma, la cadena de certificados, <code>timestampMs</code> (frescura), el package, el <code>certDigest</code> y <code>basicIntegrity</code>. Todo eso dice algo del <strong>dispositivo</strong>, pero nada de la <strong>petición</strong>. El JWS por dentro se ve así:</p>
+<div class="jws">{
+  "nonce": "R2Vu...aleatorio",      <span class="hl">← lo inventó la app; el servidor no sabe qué valor esperar</span>
+  "timestampMs": 1762292400000,    <span class="ok">← sí se valida (frescura)</span>
+  "apkPackageName": "pe.ibk.personas",
+  "apkCertificateDigestSha256": ["..."],
+  "basicIntegrity": true
+}</div>
+
+<div class="callout warn">
+  <strong>Qué puede comprobar el servidor y qué no</strong>
+  Sí comprueba que el JWS es auténtico, de nuestra app, de un dispositivo sano y reciente. No comprueba que el JWS se pidió <strong>para esta petición</strong>, ni que es la <strong>primera vez</strong> que lo ve. Esos dos huecos son el replay.
+</div>
+
+<h2>3. Cómo sucedería el ataque</h2>
+<p>El escenario realista no es robar el JWS de otra persona, porque el tráfico va cifrado con TLS. Lo realista es que <strong>el propio atacante</strong> lo saque de un dispositivo sano y lo reutilice desde donde quiera:</p>
+<ol>
+  <li>Tiene un teléfono Huawei sano (sin root) con la app instalada. Ese teléfono saca un JWS válido con <code>basicIntegrity = true</code>.</li>
+  <li>Copia ese JWS. Lo puede ver en su propio tráfico, porque controla el dispositivo o tiene una app de pruebas.</li>
+  <li>Durante la ventana de frescura, pega ese mismo JWS en muchas peticiones enviadas desde un script, un emulador o un dispositivo rooteado.</li>
+  <li>El servicio valida firma, frescura y <code>basicIntegrity</code>, y todo pasa. Cada petición recibe ALLOW.</li>
+</ol>
+
+<div class="card" data-diagram="attack">
+  <div class="card-head"><h4>Ataque: un JWS sano reutilizado en muchas peticiones desde un bot</h4><span class="tag bad">Vulnerable</span></div>
+  <div class="diagram"></div>
+</div>
+
+<div class="callout bad">
+  <strong>Resultado</strong>
+  Un solo JWS sano funciona como un <strong>pase libre temporal</strong> para cualquier operación Tier 2: consultas masivas, scraping de datos, automatización de flujos desde emuladores. Si la ventana de frescura es de 5 minutos, el atacante solo necesita un JWS nuevo cada 5 minutos para mantener funcionando un bot completo.
+</div>
+
+<h2>4. La propuesta</h2>
+
+<h3>4.1 Parte 1: el nonce se deriva de la petición</h3>
+<p>En vez de generar un nonce aleatorio, la app lo calcula con los datos de la petición que va a enviar. Es lo mismo que hace iOS con el <code>clientDataHash</code>:</p>
+<pre><code>nonce = SHA256( método | ruta | SHA256(cuerpo) | deviceid | timestamp )</code></pre>
+<ul>
+  <li>Da 32 bytes, dentro del rango que acepta SysIntegrity (16 a 66 bytes).</li>
+  <li>La app envía <code>timestamp</code> en <code>X-INTEGRITY-TIMESTAMP</code>, porque el servidor lo necesita para recalcular.</li>
+  <li><code>deviceid</code> ata el JWS además al dispositivo de la sesión.</li>
+  <li>El servidor recalcula el nonce con la petición <strong>que realmente recibió</strong> y lo compara con el del JWS. Si el atacante cambia cualquier cosa (ruta, cuerpo, dispositivo, hora), no coincide.</li>
+</ul>
+
+<h3>4.2 Parte 2: registrar los nonces usados en Redis</h3>
+<p>Con la parte 1, el JWS solo sirve para <em>esa</em> petición exacta. Pero esa petición exacta se puede reenviar tal cual (por ejemplo, repetir la misma solicitud cien veces). Para eso, el servicio registra cada nonce aceptado:</p>
+<pre><code>SET integrity:huawei:nonce:{nonce} 1 NX EX {ventana_de_frescura_en_segundos}
+  → OK   : primera vez, se acepta
+  → nil  : ya se usó, DENY NONCE_REPLAYED</code></pre>
+<p>El TTL igual a la ventana de frescura es suficiente: pasado ese tiempo, el JWS ya se rechaza por viejo, así que no hace falta guardar el nonce más tiempo. Usar <code>NX</code> hace la operación atómica, de modo que dos peticiones simultáneas no pueden pasar con el mismo nonce.</p>
+
+<div class="card" data-diagram="fixed">
+  <div class="card-head"><h4>Flujo propuesto: nonce ligado a la petición y registro en Redis</h4><span class="tag good">Mitigado</span></div>
+  <div class="diagram"></div>
+</div>
+
+<h3>4.3 Qué pasa ahora con los intentos de replay</h3>
+<div class="grid2">
+  <div class="card" data-diagram="replay-other">
+    <div class="card-head"><h4>JWS reutilizado en otra petición</h4><span class="tag good">Lo cierra la parte 1</span></div>
+    <div class="diagram"></div>
+  </div>
+  <div class="card" data-diagram="replay-same">
+    <div class="card-head"><h4>La misma petición reenviada tal cual</h4><span class="tag good">Lo cierra la parte 2</span></div>
+    <div class="diagram"></div>
+  </div>
+</div>
+
+<h2>5. ¿Por qué hacen falta las dos partes?</h2>
+<table>
+  <thead><tr><th>Intento del atacante</th><th>Hoy (nonce aleatorio)</th><th>Solo Redis</th><th>Solo nonce ligado</th><th>Ambas</th></tr></thead>
+  <tbody>
+    <tr><td>Usar un JWS en muchas peticiones distintas</td><td class="no">Pasa</td><td class="part">Solo pasa la primera, pero esa puede ser cualquier petición</td><td class="yes">Bloqueado</td><td class="yes">Bloqueado</td></tr>
+    <tr><td>Reenviar la misma petición muchas veces</td><td class="no">Pasa</td><td class="yes">Bloqueado</td><td class="no">Pasa durante la ventana</td><td class="yes">Bloqueado</td></tr>
+    <tr><td>Sacar un JWS en un dispositivo sano y usarlo en una petición del bot</td><td class="no">Pasa</td><td class="no">Pasa</td><td class="part">Solo si el dispositivo sano calcula el nonce sobre la petición del bot (riesgo residual)</td><td class="part">Igual: riesgo residual</td></tr>
+  </tbody>
+</table>
+
+<div class="callout warn">
+  <strong>Riesgo residual: el relay</strong>
+  Ninguna atestación evita del todo que un atacante con un dispositivo sano lo use como "firmador" de peticiones que arma en otro lado: le pasa el nonce, el dispositivo sano saca el JWS y él lo pega en la petición del bot. La propuesta lo vuelve <strong>caro</strong>, porque cada petición necesita un JWS nuevo hecho sobre ella y no hay reutilización. Para Tier 2 suele ser aceptable. El resto lo cubren el límite de peticiones por <code>deviceid</code>, la detección de anomalías y, para lo crítico, Tier 1 con challenge del servidor. Conviene dejarlo documentado como riesgo aceptado.
+</div>
+
+<h2>6. Validación completa en el servicio</h2>
+<div class="card" data-diagram="flow">
+  <div class="card-head"><h4>Orden de validación para Huawei Tier 2</h4><span class="tag neutral">Resumen</span></div>
+  <div class="diagram"></div>
+</div>
+<p>El orden importa: <strong>Redis se escribe al final</strong>, solo cuando todo lo demás pasó. Si se registrara antes, un atacante podría "quemar" nonces legítimos mandando JWS inválidos con el mismo valor.</p>
+
+<h2>7. Cómo se implementa</h2>
+
+<h3>7.1 App (Kotlin, ilustrativo)</h3>
+<pre><code>val ts = System.currentTimeMillis().toString()
+val bodyHash = sha256Hex(bodyBytes)
+val nonce = sha256Bytes(listOf(method, path, bodyHash, deviceId, ts).joinToString("|"))
+
+SafetyDetect.getClient(context)
+    .sysIntegrity(nonce, appId)
+    .addOnSuccessListener { resp -&gt;
+        request.header("X-TOKEN-INTEGRITY", resp.result)       // JWS
+               .header("X-INTEGRITY-PLATFORM", "huawei")
+               .header("X-INTEGRITY-TIMESTAMP", ts)
+    }</code></pre>
+
+<h3>7.2 APIM: enviar al servicio el resumen de la petición</h3>
+<pre><code>&lt;set-variable name="bodyHash" value="@{
+  var body = context.Request.Body?.As&lt;string&gt;(preserveContent: true) ?? &quot;&quot;;
+  using (var sha = System.Security.Cryptography.SHA256.Create()) {
+    return BitConverter.ToString(sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(body)))
+                       .Replace(&quot;-&quot;, &quot;&quot;).ToLower();
+  }
+}" /&gt;
+&lt;send-request mode="new" response-variable-name="integrityResp" timeout="3" ignore-error="true"&gt;
+  &lt;set-url&gt;{{integrity-service-url}}/deviceintegrity/evaluate/posture&lt;/set-url&gt;
+  &lt;set-method&gt;POST&lt;/set-method&gt;
+  &lt;set-header name="Content-Type" exists-action="override"&gt;&lt;value&gt;application/json&lt;/value&gt;&lt;/set-header&gt;
+  &lt;set-body&gt;@(new JObject(
+      new JProperty(&quot;platform&quot;,  &quot;huawei&quot;),
+      new JProperty(&quot;evidence&quot;,  context.Request.Headers.GetValueOrDefault(&quot;X-TOKEN-INTEGRITY&quot;, &quot;&quot;)),
+      new JProperty(&quot;method&quot;,    context.Request.Method),
+      new JProperty(&quot;path&quot;,      context.Request.OriginalUrl.Path),
+      new JProperty(&quot;bodyHash&quot;,  (string)context.Variables[&quot;bodyHash&quot;]),
+      new JProperty(&quot;deviceId&quot;,  context.Request.Headers.GetValueOrDefault(&quot;deviceid&quot;, &quot;&quot;)),
+      new JProperty(&quot;timestamp&quot;, context.Request.Headers.GetValueOrDefault(&quot;X-INTEGRITY-TIMESTAMP&quot;, &quot;&quot;))
+  ).ToString())&lt;/set-body&gt;
+&lt;/send-request&gt;</code></pre>
+<p style="font-size:13.5px;color:var(--muted)">La app y APIM deben usar la misma ruta (la que ve el cliente, <code>OriginalUrl</code>) y la misma serialización del cuerpo, byte a byte. Conviene acordarlo por escrito, igual que el payload canónico de Tier 1.</p>
+
+<h3>7.3 Servicio (pseudocódigo)</h3>
+<pre><code>Decision evaluateHuaweiPosture(Req r) {
+    Jws jws = verifySignatureAndChain(r.evidence);            // cadena Huawei, hostname del cert
+    if (jws == null)                         return deny("JWS_INVALID");
+
+    long now = clock.millis();
+    long ts  = parseLong(r.timestamp);
+    if (abs(now - ts) &gt; WINDOW_MS)           return deny("TIMESTAMP_STALE");
+    if (abs(now - jws.timestampMs) &gt; WINDOW_MS) return deny("JWS_STALE");
+
+    if (!jws.apkPackageName.equals(PACKAGE) || !CERT_DIGESTS.contains(jws.certDigest))
+                                             return deny("APP_MISMATCH");
+
+    byte[] expected = sha256(join("|", r.method, r.path, r.bodyHash, r.deviceId, r.timestamp));
+    if (!constantTimeEquals(expected, base64Decode(jws.nonce)))
+                                             return deny("NONCE_MISMATCH");     // otra petición
+
+    if (!jws.basicIntegrity)                 return policyDecision("BASIC_INTEGRITY_FALSE");
+
+    // Al final: solo se registra un nonce de una petición que ya pasó todo lo anterior
+    boolean first = redis.set("integrity:huawei:nonce:" + hex(expected), "1",
+                              SetParams.setParams().nx().ex(WINDOW_MS / 1000));
+    if (!first)                              return deny("NONCE_REPLAYED");     // misma petición repetida
+
+    return allow();
+}</code></pre>
+
+<h2>8. Decisiones a cerrar en la propuesta</h2>
+<table>
+  <thead><tr><th>Tema</th><th>Propuesta</th></tr></thead>
+  <tbody>
+    <tr><td>Ventana de frescura</td><td>Hoy no está definida. Para Tier 2 se sugieren 60 a 120 s, igual que el TTL del challenge de Tier 1, con hasta 30 s de tolerancia por desfase de reloj.</td></tr>
+    <tr><td>Campos del nonce</td><td><code>método | ruta | SHA256(cuerpo) | deviceid | timestamp</code>, con separador y codificación fijados por escrito.</td></tr>
+    <tr><td>Redis no disponible</td><td>Si no se puede registrar el nonce, no hay protección contra replay. Hay que definir si se responde DENY o DEGRADED; entra en las políticas de contingencia pendientes.</td></tr>
+    <tr><td>Reintentos legítimos de la app</td><td>Un reintento por timeout de red reenvía el mismo nonce y será rechazado. La app debe sacar un JWS nuevo en cada reintento, o el backend debe aceptar el reintento por idempotencia.</td></tr>
+    <tr><td>Riesgo residual de relay</td><td>Documentarlo como aceptado para Tier 2 y apoyarse en el límite de peticiones por <code>deviceid</code>.</td></tr>
+  </tbody>
+</table>
+
+</main>
+
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
+
+const D = {
+  current: `sequenceDiagram
+    autonumber
+    participant App as App Huawei
+    participant HMS as HMS Safety Detect
+    participant APIM as APIM (policy fragment)
+    participant INT as smp-device-integrity-service
+    participant BE as Backend de negocio
+    App->>App: Genera nonce aleatorio local (16 bytes o más)
+    App->>HMS: sysIntegrity(nonce, appId)
+    HMS-->>App: JWS
+    App->>APIM: Request + X-TOKEN-INTEGRITY (JWS) + X-INTEGRITY-PLATFORM huawei
+    APIM->>INT: Ruta interna
+    INT->>INT: Verifica firma, cadena, timestamp, package, certDigest y basicIntegrity
+    Note over INT: No sabe qué nonce esperar ni si ya lo vio
+    INT-->>APIM: ALLOW
+    APIM->>BE: Request + X-Integrity-Decision ALLOW`,
+
+  attack: `sequenceDiagram
+    autonumber
+    participant OK as Huawei sano del atacante
+    participant HMS as HMS Safety Detect
+    participant BOT as Bot, emulador o rooteado
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    OK->>HMS: sysIntegrity(nonce cualquiera)
+    HMS-->>OK: JWS válido, basicIntegrity true
+    OK->>BOT: Copia el JWS
+    loop Mientras el JWS siga fresco
+        BOT->>APIM: Petición distinta + el mismo JWS
+        APIM->>INT: Evalúa
+        INT->>INT: Firma ok, fresco, basicIntegrity true
+        INT-->>APIM: ALLOW
+        APIM-->>BOT: Respuesta
+    end
+    Note over BOT,INT: Un JWS sirve para N peticiones distintas`,
+
+  fixed: `sequenceDiagram
+    autonumber
+    participant App as App Huawei
+    participant HMS as HMS Safety Detect
+    participant APIM as APIM (policy fragment)
+    participant INT as smp-device-integrity-service
+    participant R as Redis
+    participant BE as Backend de negocio
+    App->>App: nonce = SHA256(método | ruta | SHA256(cuerpo) | deviceid | timestamp)
+    App->>HMS: sysIntegrity(nonce, appId)
+    HMS-->>App: JWS
+    App->>APIM: Request + JWS + X-INTEGRITY-TIMESTAMP
+    APIM->>APIM: Calcula SHA256(cuerpo)
+    APIM->>INT: JWS + método, ruta, hash del cuerpo, deviceid, timestamp
+    INT->>INT: Firma, cadena, frescura, package y certDigest
+    INT->>INT: Recalcula el nonce y lo compara con el del JWS
+    INT->>R: SET NX nonce, TTL = ventana de frescura
+    R-->>INT: OK, primera vez
+    INT-->>APIM: ALLOW
+    APIM->>BE: Request + X-Integrity-Decision ALLOW`,
+
+  'replay-other': `sequenceDiagram
+    autonumber
+    participant BOT as Bot
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    BOT->>APIM: Petición B + JWS sacado para la petición A
+    APIM->>INT: JWS + datos de la petición B
+    INT->>INT: Recalcula nonce con B
+    INT->>INT: No coincide con el nonce del JWS (era de A)
+    INT-->>APIM: DENY NONCE_MISMATCH
+    APIM-->>BOT: 403 Forbidden`,
+
+  'replay-same': `sequenceDiagram
+    autonumber
+    participant BOT as Bot
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    participant R as Redis
+    BOT->>APIM: Petición A + JWS de A (segunda vez)
+    APIM->>INT: JWS + datos de A
+    INT->>INT: Nonce coincide, firma y frescura ok
+    INT->>R: SET NX nonce
+    R-->>INT: nil, ya existe
+    INT-->>APIM: DENY NONCE_REPLAYED
+    APIM-->>BOT: 403 Forbidden`,
+
+  flow: `flowchart TD
+    A([JWS + datos de la petición]) --> B{Firma y cadena de Huawei válidas}
+    B -- No --> X1[DENY JWS_INVALID]
+    B -- Sí --> C{timestamp y timestampMs dentro de la ventana}
+    C -- No --> X2[DENY STALE]
+    C -- Sí --> D{package y certDigest son los nuestros}
+    D -- No --> X3[DENY APP_MISMATCH]
+    D -- Sí --> E{Nonce recalculado igual al del JWS}
+    E -- No --> X4[DENY NONCE_MISMATCH]
+    E -- Sí --> F{basicIntegrity}
+    F -- false --> P[Decisión según política]
+    F -- true --> G{Redis SET NX del nonce}
+    G -- ya existía --> X5[DENY NONCE_REPLAYED]
+    G -- nuevo --> OK[ALLOW]
+    classDef bad fill:#FDECEC,stroke:#B91C1C,color:#7F1D1D
+    classDef good fill:#E8F7EE,stroke:#15803D,color:#14532D
+    classDef warn fill:#FFF4D6,stroke:#B7791F,color:#7A4F0F
+    class X1,X2,X3,X4,X5 bad
+    class OK good
+    class P warn`
+};
+
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  themeVariables: {
+    primaryColor: '#EEF2FF',
+    primaryBorderColor: '#001391',
+    primaryTextColor: '#001391',
+    lineColor: '#46536D',
+    actorBkg: '#EEF2FF',
+    actorBorder: '#001391',
+    actorTextColor: '#001391',
+    actorLineColor: '#9AA6C4',
+    signalColor: '#46536D',
+    signalTextColor: '#1F2937',
+    noteBkgColor: '#FFF4D6',
+    noteBorderColor: '#B7791F',
+    noteTextColor: '#1F2937',
+    labelBoxBkgColor: '#FFF4D6',
+    labelBoxBorderColor: '#B7791F',
+    loopTextColor: '#1F2937',
+    sequenceNumberColor: '#FFFFFF'
+  },
+  sequence: { mirrorActors: true, useMaxWidth: false, actorMargin: 30, messageMargin: 30 },
+  flowchart: { useMaxWidth: false, htmlLabels: false, curve: 'basis' }
+});
+
+function fitSvg(svg) {
+  const pad = 12;
+  const bb = svg.getBBox();
+  const w = Math.ceil(bb.width + pad * 2);
+  const h = Math.ceil(bb.height + pad * 2);
+  svg.setAttribute('viewBox', `${bb.x - pad} ${bb.y - pad} ${w} ${h}`);
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  svg.style.maxWidth = '100%';
+  svg.style.height = 'auto';
+}
+
+function pngBlob(svg, scale = 2) {
+  const clone = svg.cloneNode(true);
+  const w = +svg.getAttribute('width');
+  const h = +svg.getAttribute('height');
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.style.maxWidth = '';
+  const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone));
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = w * scale;
+      c.height = h * scale;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0, w, h);
+      c.toBlob(b => (b ? resolve(b) : reject(new Error('PNG'))), 'image/png');
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+for (const card of document.querySelectorAll('[data-diagram]')) {
+  const key = card.dataset.diagram;
+  const target = card.querySelector('.diagram');
+  try {
+    const { svg } = await mermaid.render(`svg-${key}`, D[key]);
+    target.innerHTML = svg;
+    const el = target.querySelector('svg');
+    fitSvg(el);
+    const btn = document.createElement('button');
+    btn.textContent = 'Descargar PNG';
+    btn.onclick = async () => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(await pngBlob(el));
+      a.download = `Huawei-Tier2-${key}.png`;
+      a.click();
+    };
+    card.querySelector('.card-head').appendChild(btn);
+  } catch (e) {
+    target.textContent = 'Error al renderizar: ' + (e.message || e);
+  }
+}
+</script>
+</body>
+</html>

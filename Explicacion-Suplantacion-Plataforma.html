@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Suplantación de plataforma — explicación</title>
+<style>
+  :root {
+    --brand: #001391;
+    --ink: #1F2937;
+    --muted: #46536D;
+    --line: #D6DCEB;
+    --bg: #F5F7FC;
+    --bad: #B91C1C;
+    --bad-bg: #FDECEC;
+    --good: #15803D;
+    --good-bg: #E8F7EE;
+    --warn: #B7791F;
+    --warn-bg: #FFF8E6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.55;
+  }
+  header { background: var(--brand); color: #fff; padding: 28px 40px; }
+  header h1 { margin: 0 0 6px; font-size: 24px; }
+  header p { margin: 0; opacity: .88; max-width: 900px; }
+  header code { background: rgba(255,255,255,.15); color: #fff; }
+  main { max-width: 1200px; margin: 0 auto; padding: 24px 40px 60px; }
+  h2 { color: var(--brand); border-bottom: 2px solid var(--brand); padding-bottom: 6px; margin-top: 44px; }
+  h3 { margin: 26px 0 8px; }
+  p, li { font-size: 15px; }
+  code { background: #EEF2FF; padding: 1px 5px; border-radius: 4px; font-size: 13.5px; }
+  pre {
+    background: #0F172A;
+    color: #E2E8F0;
+    padding: 16px 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+  .callout {
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    border: 1px solid;
+    border-left-width: 5px;
+  }
+  .callout.bad { background: var(--bad-bg); border-color: #F5C2C2; border-left-color: var(--bad); }
+  .callout.good { background: var(--good-bg); border-color: #BDE5CB; border-left-color: var(--good); }
+  .callout.warn { background: var(--warn-bg); border-color: #F1D49A; border-left-color: var(--warn); }
+  .callout > strong:first-child { display: block; margin-bottom: 4px; }
+  .card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin: 16px 0 24px;
+    overflow: hidden;
+  }
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line);
+    background: #FAFBFE;
+    gap: 12px;
+  }
+  .card-head h4 { margin: 0; font-size: 14.5px; }
+  .tag { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+  .tag.bad { background: var(--bad-bg); color: var(--bad); }
+  .tag.good { background: var(--good-bg); color: var(--good); }
+  .tag.neutral { background: #EEF2FF; color: var(--brand); }
+  .card-head button {
+    border: 1px solid var(--brand);
+    background: #fff;
+    color: var(--brand);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .card-head button:hover { background: var(--brand); color: #fff; }
+  .diagram { padding: 16px; overflow-x: auto; text-align: center; }
+  .diagram svg { max-width: 100%; height: auto; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+  table { border-collapse: collapse; width: 100%; background: #fff; font-size: 14px; margin: 12px 0; }
+  th, td { border: 1px solid var(--line); padding: 9px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--brand); color: #fff; }
+  td.yes { color: var(--good); font-weight: 600; }
+  td.no { color: var(--bad); font-weight: 600; }
+  .analogy {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin: 14px 0;
+  }
+  @media (max-width: 900px) { .analogy { grid-template-columns: 1fr; } }
+  .analogy div {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-size: 14px;
+  }
+  .analogy div b { display: block; color: var(--brand); margin-bottom: 4px; }
+  .request-box {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 16px;
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .request-box .hl { background: #FDE2E2; color: var(--bad); font-weight: 700; }
+  .tldr {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>¿Cómo un atacante elige la plataforma con el control más débil?</h1>
+  <p>Explicación del riesgo de confiar en <code>X-INTEGRITY-PLATFORM</code> en la propuesta de <code>smp-device-integrity-service</code>, y de cómo lo cierra cada defensa.</p>
+</header>
+
+<main>
+
+<section class="tldr">
+  <strong>En una frase:</strong> APIM decide <em>qué validación aplicar</em> según la plataforma que la app <em>dice</em> ser. Si un atacante puede mentir sobre la plataforma, va a elegir la que tenga el control más débil en ese momento, por ejemplo la que tiene el switch de emergencia apagado.
+  <p style="margin:10px 0 0">La red interna no ayuda aquí: el ataque entra por APIM, el camino legítimo.</p>
+</section>
+
+<h2>1. La idea con una analogía</h2>
+<div class="analogy">
+  <div><b>El edificio</b>Tiene tres puertas: Android, Huawei e iOS. Cada una tiene su propio guardia que revisa un documento distinto.</div>
+  <div><b>El problema</b>El visitante elige por qué puerta entra diciendo "soy Huawei". Nadie comprueba que lo sea.</div>
+  <div><b>El ataque</b>Un día el guardia de la puerta Huawei se va (switch apagado). El atacante dice "soy Huawei" y entra sin que nadie lo revise.</div>
+</div>
+
+<h2>2. Cómo funciona hoy (flujo normal)</h2>
+<p>APIM lee <code>X-INTEGRITY-PLATFORM</code> y, con ese valor, decide dos cosas: <strong>qué switch consultar</strong> (<code>allowintegrityverifyandroid</code>, <code>...huawei</code> o <code>...ios</code>) y <strong>qué validador usar</strong> en el servicio (Google, Huawei o Apple).</p>
+<div class="card" data-diagram="normal">
+  <div class="card-head"><h4>Flujo esperado: un Android legítimo</h4><span class="tag neutral">Referencia</span></div>
+  <div class="diagram"></div>
+</div>
+<div class="callout warn">
+  <strong>El supuesto escondido</strong>
+  Se asume que la app dice la verdad sobre su plataforma. Pero <code>X-INTEGRITY-PLATFORM</code>, igual que <code>devicetype</code>, lo escribe el cliente, y un atacante lo cambia con un proxy en un segundo.
+</div>
+
+<h2>3. El ataque paso a paso</h2>
+<h3>3.1 Situación</h3>
+<ul>
+  <li>Hay un incidente con Huawei (su API falla o da falsos positivos masivos) y operaciones apaga <code>allowintegrityverifyhuawei = false</code>. Es justo para lo que existe el switch.</li>
+  <li>Android e iOS siguen con la validación activa.</li>
+  <li>El atacante tiene un Android <strong>rooteado</strong>. Play Integrity lo rechazaría porque no cumple <code>MEETS_DEVICE_INTEGRITY</code>.</li>
+</ul>
+
+<h3>3.2 Qué hace el atacante</h3>
+<p>Intercepta la petición de su app (por ejemplo con Frida o Burp en el propio dispositivo rooteado) y cambia un solo header:</p>
+<div class="request-box">POST /transfers/execute HTTP/1.1
+Authorization: Bearer eyJhbGciOi...    <span style="color:#46536D">(su sesión, iniciada en su Android rooteado)</span>
+deviceid: 3f9c-android-rooteado
+<span class="hl">X-INTEGRITY-PLATFORM: huawei</span>          <span style="color:#46536D">(antes decía android)</span>
+X-TOKEN-INTEGRITY: cualquier-cosa
+
+{"destination_account":"...","amount":"5000.00","currency":"PEN"}</div>
+
+<div class="card" data-diagram="attack-switch">
+  <div class="card-head"><h4>Ataque: el switch de Huawei está apagado y el Android rooteado se declara huawei</h4><span class="tag bad">Vulnerable</span></div>
+  <div class="diagram"></div>
+</div>
+<div class="callout bad">
+  <strong>Resultado</strong>
+  El backend recibe <code>SKIPPED</code> y procesa la operación. El switch de Huawei, pensado para no afectar a los clientes Huawei durante un incidente, terminó apagando la validación para <strong>todos</strong> los dispositivos, porque cualquiera puede decir que es Huawei.
+</div>
+
+<h3>3.3 Variante con todos los switches encendidos</h3>
+<p>Aunque no haya ningún switch apagado, el atacante sigue buscando la puerta más fácil: la plataforma cuyo validador sea más permisivo o tenga un error de implementación. Por ejemplo, declararse <code>ios</code> y mandar algo que no es una aserción, para ver si el validador de Apple falla "abierto" ante un formato que no esperaba. Si el validador de Huawei solo mira <code>basicIntegrity</code>, también puede ser más fácil de pasar que el veredicto de Google.</p>
+
+<h2>4. Defensa 1: la evidencia debe corresponder a la plataforma declarada</h2>
+<p>Cada proveedor entrega una evidencia con forma y firma distintas, así que el servicio puede comprobar que lo que recibe <strong>es de verdad</strong> de la plataforma declarada:</p>
+<table>
+  <thead><tr><th>Plataforma declarada</th><th>Qué debe recibir el servicio</th><th>Cómo se comprueba</th></tr></thead>
+  <tbody>
+    <tr><td>android</td><td>Token de Play Integrity (cifrado)</td><td>Google lo descifra con <code>decodeIntegrityToken</code> para <em>nuestro</em> package. Si no es un token de Google para nuestra app, falla.</td></tr>
+    <tr><td>huawei</td><td>JWS firmado por Huawei</td><td>La firma se valida con la cadena de certificados de Huawei, y el <code>apkPackageName</code> y el <code>certDigest</code> deben ser los nuestros.</td></tr>
+    <tr><td>ios</td><td>Assertion (CBOR) + <code>keyId</code></td><td>El <code>keyId</code> debe existir en Cosmos DB, enrolado como <code>ios</code>, y la firma debe validar con esa clave pública.</td></tr>
+  </tbody>
+</table>
+<p>Si la evidencia no corresponde (un token de Google declarado como <code>ios</code>, o basura declarada como <code>huawei</code>), el servicio responde <strong>DENY con <code>PLATFORM_EVIDENCE_MISMATCH</code></strong>. Nunca debe responder "no pude validar, dejo pasar".</p>
+
+<div class="card" data-diagram="defense1">
+  <div class="card-head"><h4>Defensa 1: un token de Android declarado como iOS se rechaza</h4><span class="tag good">Mitigado</span></div>
+  <div class="diagram"></div>
+</div>
+
+<div class="callout warn">
+  <strong>Límite importante de la defensa 1</strong>
+  Solo funciona si <strong>alguien revisa la evidencia</strong>. Con el switch de Huawei apagado, APIM ni siquiera llama al servicio, así que no hay quien detecte que el token no es de Huawei. <strong>La defensa 1 no cierra el ataque del punto 3.</strong> Para eso hace falta la defensa 2.
+</div>
+
+<h2>5. Defensa 2: la plataforma queda ligada al dispositivo</h2>
+<p>La idea es que la plataforma <strong>deje de ser un dato que manda el cliente en cada petición</strong> y pase a ser un dato que el banco <strong>registró y comprobó una vez</strong>.</p>
+
+<h3>5.1 Registrar la plataforma con prueba (enrolamiento o primer login del dispositivo)</h3>
+<p>Cuando un <code>deviceid</code> se usa por primera vez, la app tiene que presentar evidencia válida de su plataforma. El servicio solo registra <code>deviceid → plataforma</code> si esa evidencia pasa la validación del proveedor correspondiente.</p>
+<div class="card" data-diagram="binding">
+  <div class="card-head"><h4>Registro: la plataforma se guarda solo si la evidencia lo prueba</h4><span class="tag good">Mitigado</span></div>
+  <div class="diagram"></div>
+</div>
+<div class="callout warn">
+  <strong>Si el registro no exige evidencia, la defensa no sirve</strong>
+  Si basta con "declarar" la plataforma la primera vez, el atacante registra su Android rooteado como <code>huawei</code> desde el inicio y queda ligado a la plataforma equivocada para siempre. Por la misma razón, si el switch de una plataforma está apagado, los dispositivos <strong>nuevos</strong> de esa plataforma no deberían poder registrarse, o deben quedar marcados como <code>UNVERIFIED</code> hasta que se vuelvan a validar.
+</div>
+
+<h3>5.2 En cada operación, APIM usa la plataforma registrada y no la del header</h3>
+<p>La forma más simple es que el token de sesión emitido en el login incluya un claim <code>platform</code> (tomado del registro). APIM valida el token, lee el claim y:</p>
+<ul>
+  <li>Elige el switch y el validador con el claim, <strong>no</strong> con <code>X-INTEGRITY-PLATFORM</code>.</li>
+  <li>Si el header no coincide con el claim, responde 403 <code>PLATFORM_MISMATCH</code>. Además, esa discrepancia es una señal de ataque que conviene alertar.</li>
+</ul>
+
+<div class="grid2">
+  <div class="card" data-diagram="defense2-mismatch">
+    <div class="card-head"><h4>El header no coincide con la plataforma registrada</h4><span class="tag good">Mitigado</span></div>
+    <div class="diagram"></div>
+  </div>
+  <div class="card" data-diagram="defense2-switch">
+    <div class="card-head"><h4>Incluso sin header, el switch se elige por el registro</h4><span class="tag good">Mitigado</span></div>
+    <div class="diagram"></div>
+  </div>
+</div>
+
+<h2>6. Qué cubre cada defensa</h2>
+<table>
+  <thead><tr><th>Escenario</th><th>Solo defensa 1</th><th>Solo defensa 2</th><th>Ambas</th></tr></thead>
+  <tbody>
+    <tr><td>Switch de Huawei apagado, Android rooteado se declara huawei</td><td class="no">No lo cierra (nadie revisa la evidencia)</td><td class="yes">Lo cierra</td><td class="yes">Lo cierra</td></tr>
+    <tr><td>Todo encendido, token de Google declarado como ios</td><td class="yes">Lo cierra</td><td class="yes">Lo cierra</td><td class="yes">Lo cierra</td></tr>
+    <tr><td>Dispositivo nuevo que se registra mintiendo la plataforma</td><td class="yes">Lo cierra, si el registro exige evidencia</td><td class="no">No lo cierra si el registro no exige evidencia</td><td class="yes">Lo cierra</td></tr>
+    <tr><td>Validador de una plataforma con un error que falla abierto</td><td class="yes">Reduce el riesgo</td><td class="yes">El atacante no puede elegir ese validador</td><td class="yes">Lo cierra</td></tr>
+  </tbody>
+</table>
+<p><strong>Conclusión:</strong> se necesitan las dos. La defensa 1 garantiza que la plataforma registrada es verdadera. La defensa 2 evita que el atacante elija otra plataforma después, incluida la que tiene el switch apagado.</p>
+
+<h2>7. Flujo de decisión completo en APIM</h2>
+<div class="card" data-diagram="flow">
+  <div class="card-head"><h4>Cómo elige APIM la plataforma, el switch y el validador</h4><span class="tag neutral">Resumen</span></div>
+  <div class="diagram"></div>
+</div>
+
+<h2>8. Ejemplo de policy en APIM</h2>
+<pre><code>&lt;!-- El token de sesión ya trae el claim "platform", fijado al registrar el dispositivo --&gt;
+&lt;validate-jwt header-name="Authorization" output-token-variable-name="jwt" failed-validation-httpcode="401"&gt;
+  &lt;openid-config url="{{idp-openid-config}}" /&gt;
+  &lt;required-claims&gt;
+    &lt;claim name="platform" match="any"&gt;
+      &lt;value&gt;android&lt;/value&gt;&lt;value&gt;huawei&lt;/value&gt;&lt;value&gt;ios&lt;/value&gt;
+    &lt;/claim&gt;
+  &lt;/required-claims&gt;
+&lt;/validate-jwt&gt;
+
+&lt;set-variable name="platform" value="@(((Jwt)context.Variables[&quot;jwt&quot;]).Claims.GetValueOrDefault(&quot;platform&quot;, &quot;&quot;))" /&gt;
+
+&lt;!-- El header declarado debe coincidir con la plataforma registrada --&gt;
+&lt;choose&gt;
+  &lt;when condition="@(context.Request.Headers.GetValueOrDefault(&quot;X-INTEGRITY-PLATFORM&quot;, &quot;&quot;).ToLower() != (string)context.Variables[&quot;platform&quot;])"&gt;
+    &lt;return-response&gt;
+      &lt;set-status code="403" reason="Forbidden" /&gt;
+      &lt;set-body&gt;{"code":"PLATFORM_MISMATCH"}&lt;/set-body&gt;
+    &lt;/return-response&gt;
+  &lt;/when&gt;
+&lt;/choose&gt;
+
+&lt;!-- El switch se elige con la plataforma registrada, nunca con el header --&gt;
+&lt;set-variable name="platformSwitch" value="@{
+  switch ((string)context.Variables[&quot;platform&quot;]) {
+    case &quot;android&quot;: return &quot;{{allowintegrityverifyandroid}}&quot;;
+    case &quot;huawei&quot;:  return &quot;{{allowintegrityverifyhuawei}}&quot;;
+    case &quot;ios&quot;:     return &quot;{{allowintegrityverifyios}}&quot;;
+    default:        return &quot;true&quot;;
+  }
+}" /&gt;</code></pre>
+<p style="font-size:13.5px;color:var(--muted)">Si el token de sesión no puede llevar el claim, la alternativa es que el servicio de integridad consulte el registro <code>deviceid → plataforma</code> y devuelva la plataforma junto con la decisión. Así APIM resuelve el switch con ese valor.</p>
+
+<h2>9. Cómo probarlo</h2>
+<table>
+  <thead><tr><th>Prueba</th><th>Resultado esperado</th></tr></thead>
+  <tbody>
+    <tr><td>Con <code>allowintegrityverifyhuawei = false</code>, un dispositivo registrado como android envía <code>X-INTEGRITY-PLATFORM: huawei</code></td><td>403 <code>PLATFORM_MISMATCH</code>. El backend no recibe la petición.</td></tr>
+    <tr><td>Igual que la anterior, pero sin el header</td><td>APIM usa la plataforma registrada (android), valida y rechaza el dispositivo rooteado.</td></tr>
+    <tr><td>Token de Play Integrity enviado como <code>ios</code> (con el claim manipulado en un entorno de pruebas)</td><td>DENY <code>PLATFORM_EVIDENCE_MISMATCH</code>.</td></tr>
+    <tr><td>Registro de un dispositivo nuevo como huawei con un token de Google</td><td>No se registra. 403.</td></tr>
+    <tr><td>Registro de un dispositivo Huawei nuevo con el switch de Huawei apagado</td><td>Se rechaza o queda <code>UNVERIFIED</code>, según la política aprobada.</td></tr>
+    <tr><td>Cambio de plataforma para un <code>deviceid</code> ya registrado</td><td>Se rechaza y genera una alerta. Solo se permite con un nuevo enrolamiento completo.</td></tr>
+  </tbody>
+</table>
+
+</main>
+
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
+
+const D = {
+  normal: `sequenceDiagram
+    autonumber
+    participant App as App Android
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    participant G as Google
+    participant BE as Backend de negocio
+    App->>APIM: Operación + X-INTEGRITY-PLATFORM android + token
+    APIM->>APIM: Lee platform del header, switch android = true
+    APIM->>INT: Evalúa con validador android
+    INT->>G: decodeIntegrityToken
+    G-->>INT: veredictos
+    INT-->>APIM: ALLOW
+    APIM->>BE: Operación + X-Integrity-Decision ALLOW`,
+
+  'attack-switch': `sequenceDiagram
+    autonumber
+    participant ATK as Android rooteado
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    participant BE as Backend de negocio
+    Note over APIM: allowintegrityverifyhuawei = false
+    ATK->>APIM: Operación + X-INTEGRITY-PLATFORM huawei (falso)
+    APIM->>APIM: Lee platform del header = huawei
+    APIM->>APIM: Switch huawei apagado, no valida
+    Note over INT: Nunca se consulta
+    APIM->>BE: Operación + X-Integrity-Decision SKIPPED
+    BE-->>APIM: 200 OK
+    APIM-->>ATK: Operación ejecutada desde dispositivo rooteado`,
+
+  defense1: `sequenceDiagram
+    autonumber
+    participant ATK as Android rooteado
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    ATK->>APIM: X-INTEGRITY-PLATFORM ios + token de Google
+    APIM->>INT: Evalúa con validador ios
+    INT->>INT: Busca keyId en Cosmos DB, no existe
+    INT->>INT: El token no es una assertion CBOR
+    INT-->>APIM: DENY PLATFORM_EVIDENCE_MISMATCH
+    APIM-->>ATK: 403 Forbidden`,
+
+  binding: `sequenceDiagram
+    autonumber
+    participant App as App (dispositivo nuevo)
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    participant P as Proveedor de la plataforma
+    participant REG as Registro deviceid a plataforma
+    participant IDP as Login / emisor de sesión
+    App->>APIM: Login o enrolamiento + platform + evidencia
+    APIM->>INT: Valida evidencia con el proveedor de esa plataforma
+    INT->>P: Verifica token, JWS o attestation
+    P-->>INT: Válido para nuestra app
+    alt Evidencia válida
+        INT->>REG: Guarda deviceid = plataforma (inmutable)
+        INT-->>APIM: Plataforma verificada
+        APIM->>IDP: Emite sesión con claim platform
+        IDP-->>App: Token de sesión (platform = android)
+    else Evidencia inválida o de otra plataforma
+        INT-->>APIM: DENY
+        APIM-->>App: 403, no se registra el dispositivo
+    end`,
+
+  'defense2-mismatch': `sequenceDiagram
+    autonumber
+    participant ATK as Android rooteado
+    participant APIM as APIM
+    participant BE as Backend de negocio
+    Note over APIM: allowintegrityverifyhuawei = false
+    ATK->>APIM: Sesión con claim platform android + header huawei
+    APIM->>APIM: Compara header huawei con claim android
+    APIM-->>ATK: 403 PLATFORM_MISMATCH
+    Note over APIM: Alerta de posible manipulación
+    Note over BE: Nunca recibe la petición`,
+
+  'defense2-switch': `sequenceDiagram
+    autonumber
+    participant ATK as Android rooteado
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    Note over APIM: allowintegrityverifyhuawei = false
+    ATK->>APIM: Sesión con claim platform android
+    APIM->>APIM: Switch elegido por claim = android, encendido
+    APIM->>INT: Evalúa con validador android
+    INT-->>APIM: DENY, no cumple MEETS_DEVICE_INTEGRITY
+    APIM-->>ATK: 403 Forbidden`,
+
+  flow: `flowchart TD
+    A([Petición con sesión]) --> B[Valida token de sesión y lee claim platform]
+    B --> C{Header X-INTEGRITY-PLATFORM coincide con el claim}
+    C -- No --> X1[403 PLATFORM_MISMATCH + alerta]
+    C -- Sí o sin header --> D[Elige switch con el claim, no con el header]
+    D --> E{Switch de esa plataforma}
+    E -- false --> S[Reenvía con SKIPPED, solo afecta a dispositivos realmente de esa plataforma]
+    E -- true --> F[Servicio valida con el proveedor del claim]
+    F --> G{La evidencia es de esa plataforma y es válida}
+    G -- No --> X2[DENY PLATFORM_EVIDENCE_MISMATCH o veredicto]
+    G -- Sí --> OK[ALLOW o DEGRADED según política]
+    classDef bad fill:#FDECEC,stroke:#B91C1C,color:#7F1D1D
+    classDef good fill:#E8F7EE,stroke:#15803D,color:#14532D
+    classDef warn fill:#FFF4D6,stroke:#B7791F,color:#7A4F0F
+    class X1,X2 bad
+    class OK good
+    class S warn`
+};
+
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  themeVariables: {
+    primaryColor: '#EEF2FF',
+    primaryBorderColor: '#001391',
+    primaryTextColor: '#001391',
+    lineColor: '#46536D',
+    actorBkg: '#EEF2FF',
+    actorBorder: '#001391',
+    actorTextColor: '#001391',
+    actorLineColor: '#9AA6C4',
+    signalColor: '#46536D',
+    signalTextColor: '#1F2937',
+    noteBkgColor: '#FFF4D6',
+    noteBorderColor: '#B7791F',
+    noteTextColor: '#1F2937',
+    labelBoxBkgColor: '#FFF4D6',
+    labelBoxBorderColor: '#B7791F',
+    sequenceNumberColor: '#FFFFFF'
+  },
+  sequence: { mirrorActors: true, useMaxWidth: false, actorMargin: 30, messageMargin: 30 },
+  flowchart: { useMaxWidth: false, htmlLabels: false, curve: 'basis' }
+});
+
+function fitSvg(svg) {
+  const pad = 12;
+  const bb = svg.getBBox();
+  const w = Math.ceil(bb.width + pad * 2);
+  const h = Math.ceil(bb.height + pad * 2);
+  svg.setAttribute('viewBox', `${bb.x - pad} ${bb.y - pad} ${w} ${h}`);
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  svg.style.maxWidth = '100%';
+  svg.style.height = 'auto';
+}
+
+function pngBlob(svg, scale = 2) {
+  const clone = svg.cloneNode(true);
+  const w = +svg.getAttribute('width');
+  const h = +svg.getAttribute('height');
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.style.maxWidth = '';
+  const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone));
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = w * scale;
+      c.height = h * scale;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0, w, h);
+      c.toBlob(b => (b ? resolve(b) : reject(new Error('PNG'))), 'image/png');
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+for (const card of document.querySelectorAll('[data-diagram]')) {
+  const key = card.dataset.diagram;
+  const target = card.querySelector('.diagram');
+  try {
+    const { svg } = await mermaid.render(`svg-${key}`, D[key]);
+    target.innerHTML = svg;
+    const el = target.querySelector('svg');
+    fitSvg(el);
+    const btn = document.createElement('button');
+    btn.textContent = 'Descargar PNG';
+    btn.onclick = async () => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(await pngBlob(el));
+      a.download = `Plataforma-${key}.png`;
+      a.click();
+    };
+    card.querySelector('.card-head').appendChild(btn);
+  } catch (e) {
+    target.textContent = 'Error al renderizar: ' + (e.message || e);
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>iOS: actualización condicional del counter en Cosmos DB — explicación</title>
+<style>
+  :root {
+    --brand: #001391;
+    --ink: #1F2937;
+    --muted: #46536D;
+    --line: #D6DCEB;
+    --bg: #F5F7FC;
+    --bad: #B91C1C;
+    --bad-bg: #FDECEC;
+    --good: #15803D;
+    --good-bg: #E8F7EE;
+    --warn: #B7791F;
+    --warn-bg: #FFF8E6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.55;
+  }
+  header { background: var(--brand); color: #fff; padding: 28px 40px; }
+  header h1 { margin: 0 0 6px; font-size: 24px; }
+  header p { margin: 0; opacity: .88; max-width: 900px; }
+  header code { background: rgba(255,255,255,.15); color: #fff; }
+  main { max-width: 1200px; margin: 0 auto; padding: 24px 40px 60px; }
+  h2 { color: var(--brand); border-bottom: 2px solid var(--brand); padding-bottom: 6px; margin-top: 44px; }
+  h3 { margin: 26px 0 8px; }
+  p, li { font-size: 15px; }
+  code { background: #EEF2FF; padding: 1px 5px; border-radius: 4px; font-size: 13.5px; }
+  pre {
+    background: #0F172A;
+    color: #E2E8F0;
+    padding: 16px 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+  .callout {
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    border: 1px solid;
+    border-left-width: 5px;
+  }
+  .callout.bad { background: var(--bad-bg); border-color: #F5C2C2; border-left-color: var(--bad); }
+  .callout.good { background: var(--good-bg); border-color: #BDE5CB; border-left-color: var(--good); }
+  .callout.warn { background: var(--warn-bg); border-color: #F1D49A; border-left-color: var(--warn); }
+  .callout > strong:first-child { display: block; margin-bottom: 4px; }
+  .card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin: 16px 0 24px;
+    overflow: hidden;
+  }
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line);
+    background: #FAFBFE;
+    gap: 12px;
+  }
+  .card-head h4 { margin: 0; font-size: 14.5px; }
+  .tag { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+  .tag.bad { background: var(--bad-bg); color: var(--bad); }
+  .tag.good { background: var(--good-bg); color: var(--good); }
+  .tag.neutral { background: #EEF2FF; color: var(--brand); }
+  .card-head button {
+    border: 1px solid var(--brand);
+    background: #fff;
+    color: var(--brand);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .card-head button:hover { background: var(--brand); color: #fff; }
+  .diagram { padding: 16px; overflow-x: auto; text-align: center; }
+  .diagram svg { max-width: 100%; height: auto; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+  table { border-collapse: collapse; width: 100%; background: #fff; font-size: 14px; margin: 12px 0; }
+  th, td { border: 1px solid var(--line); padding: 9px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--brand); color: #fff; }
+  td.bad { background: var(--bad-bg); color: var(--bad); font-weight: 600; }
+  td.good { background: var(--good-bg); color: var(--good); font-weight: 600; }
+  .analogy {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin: 14px 0;
+  }
+  @media (max-width: 900px) { .analogy { grid-template-columns: 1fr; } }
+  .analogy div {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-size: 14px;
+  }
+  .analogy div b { display: block; color: var(--brand); margin-bottom: 4px; }
+  .tldr {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-top: 8px;
+  }
+  .timeline th:first-child, .timeline td:first-child { width: 70px; text-align: center; }
+  .timeline td:first-child { color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>iOS: ¿por qué el counter en Cosmos DB debe actualizarse con ETag?</h1>
+  <p>Explicación de la condición de carrera en la validación de aserciones de App Attest en <code>smp-device-integrity-service</code> (Tier 1 y Tier 2).</p>
+</header>
+
+<main>
+
+<section class="tldr">
+  <strong>En una frase:</strong> el servicio hace tres pasos separados: <em>lee</em> el counter, <em>compara</em> y <em>escribe</em>. Si dos peticiones llegan al mismo tiempo, las dos leen el mismo valor viejo antes de que cualquiera escriba, y las dos pasan la comparación.
+  <p style="margin:10px 0 0">Esto tiene dos consecuencias. La misma aserción se acepta varias veces, de modo que el counter deja de proteger contra replay. Y el counter puede <strong>retroceder</strong>, lo que permite reutilizar aserciones que ya se habían usado. La corrección es escribir solo si el documento no cambió desde que se leyó: ETag con <code>If-Match</code>, que es la concurrencia optimista de Cosmos DB.</p>
+</section>
+
+<h2>1. La idea con una analogía</h2>
+<div class="analogy">
+  <div><b>El talonario</b>Cada cheque tiene un número. El banco anota el último número cobrado y solo acepta números mayores.</div>
+  <div><b>Dos cajeros a la vez</b>Llegan dos copias del cheque 6. Los dos cajeros miran el libro al mismo tiempo, ven "último: 5", y los dos pagan. Luego los dos anotan 6.</div>
+  <div><b>Con ETag</b>El libro tiene un sello de versión. Un cajero solo puede anotar si el sello sigue igual que cuando lo leyó. El segundo cajero ve que el sello cambió, vuelve a leer, ve "último: 6" y rechaza el cheque.</div>
+</div>
+
+<h2>2. Por qué existe el counter</h2>
+<p>Cada aserción de App Attest lleva un counter que el Secure Enclave incrementa en cada uso de la clave. El servicio guarda en Cosmos DB el último counter aceptado por <code>keyId</code> y rechaza cualquier aserción con un counter menor o igual. Así, una aserción solo sirve <strong>una vez</strong>. En iOS Tier 2 es la <strong>única</strong> protección contra replay, porque no hay challenge ni Redis.</p>
+<pre><code>// Diagrama del documento: "Lee clave pública y counter" → "Verifica ... counter mayor al guardado" → "Actualiza counter"
+stored = cosmos.read(keyId).counter        // 1. leer
+if (assertion.counter &lt;= stored) deny()     // 2. comparar
+cosmos.upsert(keyId, counter = assertion.counter)   // 3. escribir  ← sin condición</code></pre>
+<div class="callout warn">
+  <strong>El hueco</strong>
+  Entre el paso 1 y el paso 3 pasan milisegundos: se verifica la firma, se calcula el hash y hay una ida y vuelta a Cosmos DB. Cualquier petición que lea en ese intervalo ve el valor viejo. Además, el servicio corre en varias réplicas, así que un <code>lock</code> en memoria no lo resuelve.
+</div>
+
+<h2>3. Problema 1: la misma aserción pasa varias veces</h2>
+<p>El atacante captura una aserción válida (counter 6) y la envía <strong>20 veces en paralelo</strong>, por ejemplo con un script. Cada petición cae en una réplica distinta del servicio.</p>
+<table class="timeline">
+  <thead><tr><th>t (ms)</th><th>Petición A (assertion 6)</th><th>Petición B (la misma assertion 6)</th><th>Cosmos DB</th></tr></thead>
+  <tbody>
+    <tr><td>0</td><td>Lee counter → 5</td><td></td><td>counter = 5</td></tr>
+    <tr><td>2</td><td></td><td>Lee counter → 5</td><td>counter = 5</td></tr>
+    <tr><td>8</td><td>6 &gt; 5 ✓ firma ok</td><td>6 &gt; 5 ✓ firma ok</td><td></td></tr>
+    <tr><td>12</td><td>Escribe 6</td><td></td><td>counter = 6</td></tr>
+    <tr><td>14</td><td class="bad">ALLOW</td><td>Escribe 6</td><td>counter = 6</td></tr>
+    <tr><td>15</td><td></td><td class="bad">ALLOW</td><td></td></tr>
+  </tbody>
+</table>
+<div class="card" data-diagram="race-replay">
+  <div class="card-head"><h4>Dos copias de la misma aserción pasan a la vez</h4><span class="tag bad">Vulnerable</span></div>
+  <div class="diagram"></div>
+</div>
+
+<h2>4. Problema 2: el counter retrocede</h2>
+<p>Este caso ni siquiera requiere un atacante para ocurrir. La app manda dos peticiones protegidas casi a la vez (assertion 6 y assertion 7) y llegan en orden distinto a réplicas distintas. Si la 7 escribe primero y la 6 después, el counter guardado queda en <strong>6</strong>, aunque ya se aceptó la 7.</p>
+<table class="timeline">
+  <thead><tr><th>t (ms)</th><th>Petición A (assertion 6)</th><th>Petición B (assertion 7)</th><th>Cosmos DB</th></tr></thead>
+  <tbody>
+    <tr><td>0</td><td>Lee counter → 5</td><td>Lee counter → 5</td><td>counter = 5</td></tr>
+    <tr><td>8</td><td>6 &gt; 5 ✓</td><td>7 &gt; 5 ✓</td><td></td></tr>
+    <tr><td>10</td><td></td><td>Escribe 7</td><td>counter = 7</td></tr>
+    <tr><td>13</td><td>Escribe 6</td><td></td><td class="bad">counter = 6 (retrocedió)</td></tr>
+    <tr><td>…</td><td colspan="2">Más tarde, el atacante reenvía la assertion 7: <strong>7 &gt; 6</strong> ✓, pasa otra vez</td><td></td></tr>
+  </tbody>
+</table>
+<div class="card" data-diagram="race-regression">
+  <div class="card-head"><h4>Escritura perdida: el counter vuelve a un valor menor</h4><span class="tag bad">Vulnerable</span></div>
+  <div class="diagram"></div>
+</div>
+
+<div class="callout bad">
+  <strong>Resultado</strong>
+  <ul style="margin:6px 0 0">
+    <li><strong>Tier 2:</strong> una aserción capturada se puede usar N veces si se envía en ráfaga. Como el <code>clientDataHash</code> liga la aserción a una petición concreta, el efecto es repetir esa petición: duplicar una operación o multiplicar el volumen de un bot con una sola aserción.</li>
+    <li><strong>Tier 1:</strong> el challenge de Redis, consumido con <code>GETDEL</code> atómico, ya frena el replay. Pero el counter que retrocede deja el estado de la clave inconsistente para el resto de peticiones.</li>
+    <li><strong>Detección:</strong> los logs muestran ALLOW con el mismo counter repetido, o counters que bajan. Si nadie lo monitorea, pasa inadvertido.</li>
+  </ul>
+</div>
+
+<h2>5. La corrección: concurrencia optimista con ETag</h2>
+<p>Cosmos DB asigna a cada documento un <code>_etag</code> que cambia en cada escritura. Si se escribe con <code>If-Match: &lt;etag leído&gt;</code>, Cosmos DB solo acepta la escritura cuando nadie modificó el documento en medio. Si alguien lo hizo, responde <strong>412 Precondition Failed</strong>. Entonces el servicio vuelve a leer y a evaluar con el valor nuevo.</p>
+<div class="grid2">
+  <div class="card" data-diagram="fixed-replay">
+    <div class="card-head"><h4>Problema 1 corregido: solo una copia pasa</h4><span class="tag good">Mitigado</span></div>
+    <div class="diagram"></div>
+  </div>
+  <div class="card" data-diagram="fixed-regression">
+    <div class="card-head"><h4>Problema 2 corregido: el counter nunca baja</h4><span class="tag good">Mitigado</span></div>
+    <div class="diagram"></div>
+  </div>
+</div>
+
+<div class="card" data-diagram="flow">
+  <div class="card-head"><h4>Lógica de actualización del counter</h4><span class="tag neutral">Resumen</span></div>
+  <div class="diagram"></div>
+</div>
+
+<div class="callout warn">
+  <strong>Efecto secundario: peticiones legítimas en paralelo</strong>
+  Con la corrección, si la app envía dos peticiones protegidas a la vez y la de counter mayor llega primero, la otra se rechaza (<code>COUNTER_REPLAYED</code>), aunque sea legítima. Es el comportamiento correcto según el modelo de App Attest, pero conviene acordar con el equipo móvil:
+  <ul style="margin:6px 0 0">
+    <li>no enviar en paralelo peticiones protegidas firmadas con la misma clave, o serializar la generación de la aserción y el envío;</li>
+    <li>ante un 403 con <code>COUNTER_REPLAYED</code> de una petición propia, generar una aserción nueva y reintentar una vez.</li>
+  </ul>
+</div>
+
+<h2>6. Cómo se implementa</h2>
+
+<h3>6.1 Opción A: leer, validar y reemplazar con If-Match (Java SDK)</h3>
+<pre><code>static final int MAX_RETRIES = 3;
+
+Decision updateCounter(String keyId, long assertionCounter) {
+    for (int i = 0; i &lt; MAX_RETRIES; i++) {
+        CosmosItemResponse&lt;DeviceKey&gt; read = container.readItem(keyId, new PartitionKey(keyId), DeviceKey.class);
+        DeviceKey key = read.getItem();
+
+        if (assertionCounter &lt;= key.getCounter()) {
+            return deny("COUNTER_REPLAYED");                     // otra petición ya usó este counter o uno mayor
+        }
+
+        key.setCounter(assertionCounter);
+        try {
+            container.replaceItem(key, keyId, new PartitionKey(keyId),
+                new CosmosItemRequestOptions().setIfMatchETag(read.getETag()));
+            return allow();
+        } catch (CosmosException e) {
+            if (e.getStatusCode() != 412) throw e;               // 412: alguien escribió en medio, se vuelve a leer
+        }
+    }
+    return deny("COUNTER_CONTENTION");
+}</code></pre>
+
+<h3>6.2 Opción B: patch condicional en una sola llamada</h3>
+<p>Cosmos DB permite un <em>patch</em> con predicado de filtro: la escritura solo se aplica si la condición se cumple en el servidor, en forma atómica. Así se evita la lectura previa del counter (la clave pública igual se lee para verificar la firma).</p>
+<pre><code>try {
+    container.patchItem(keyId, new PartitionKey(keyId),
+        CosmosPatchOperations.create().set("/counter", assertionCounter),
+        new CosmosPatchItemRequestOptions()
+            .setFilterPredicate("FROM c WHERE c.counter &lt; " + assertionCounter),
+        DeviceKey.class);
+    return allow();
+} catch (CosmosException e) {
+    if (e.getStatusCode() == 412) return deny("COUNTER_REPLAYED");   // el predicado no se cumplió
+    throw e;
+}</code></pre>
+
+<table>
+  <thead><tr><th>Aspecto</th><th>Opción A: If-Match</th><th>Opción B: patch con filtro</th></tr></thead>
+  <tbody>
+    <tr><td>Atomicidad</td><td>Sí, con reintento ante un 412</td><td>Sí, en una sola operación</td></tr>
+    <tr><td>Llamadas a Cosmos DB</td><td>Lectura más escritura, y más si hay contención</td><td>Una escritura</td></tr>
+    <tr><td>Complejidad</td><td>Bucle de reintento</td><td>Más simple</td></tr>
+    <tr><td>Recomendación</td><td colspan="2">Cualquiera de las dos es correcta. La B es más simple y barata en RU. Lo que <strong>no</strong> es válido es <code>upsert</code> o <code>replace</code> sin condición.</td></tr>
+  </tbody>
+</table>
+
+<h3>6.3 Detalles del contenedor</h3>
+<ul>
+  <li>La clave de partición es <code>/keyId</code>. Todas las operaciones de una clave caen en la misma partición lógica, que es donde el ETag y el patch condicional garantizan atomicidad.</li>
+  <li>Con <strong>una sola región de escritura</strong>, la escritura condicional se evalúa en la región que escribe y la garantía se cumple sin importar el nivel de consistencia. Si la cuenta usa <strong>escrituras multi-región</strong>, dos regiones pueden aceptar escrituras en paralelo y el conflicto se resuelve después (por defecto, gana la última escritura). En ese caso el ETag no basta, y conviene que este contenedor escriba en una sola región.</li>
+  <li>El mismo patrón aplica al enrolamiento: crear el documento con <code>createItem</code> (falla con 409 si el <code>keyId</code> ya existe), nunca con <code>upsert</code>, para que nadie pueda sobrescribir una clave enrolada.</li>
+</ul>
+
+<h2>7. Cómo probarlo</h2>
+<table>
+  <thead><tr><th>Prueba</th><th>Sin ETag</th><th>Con ETag (esperado)</th></tr></thead>
+  <tbody>
+    <tr><td>Enviar la misma aserción 20 veces en paralelo (por ejemplo con un script con concurrencia)</td><td class="bad">Varias ALLOW</td><td class="good">Exactamente 1 ALLOW y 19 DENY <code>COUNTER_REPLAYED</code></td></tr>
+    <tr><td>Enviar las aserciones 6 y 7 en paralelo, varias veces, y luego leer el counter guardado</td><td class="bad">A veces queda en 6</td><td class="good">Siempre queda en 7</td></tr>
+    <tr><td>Reenviar la assertion 7 después de la prueba anterior</td><td class="bad">Puede pasar</td><td class="good">DENY <code>COUNTER_REPLAYED</code></td></tr>
+    <tr><td>Enrolar el mismo <code>keyId</code> dos veces</td><td class="bad">La segunda sobrescribe la clave</td><td class="good">La segunda falla (409)</td></tr>
+    <tr><td>Monitoreo: alertar si en los logs aparece ALLOW con counter repetido o menor para un <code>keyId</code></td><td colspan="2">Debe quedar en 0 en producción</td></tr>
+  </tbody>
+</table>
+
+<h2>8. Ajuste al documento</h2>
+<ul>
+  <li>En los diagramas iOS Tier 1 y Tier 2, cambiar "Actualiza counter" por <strong>"Actualiza counter de forma condicional (ETag o patch con filtro); si hay conflicto, DENY COUNTER_REPLAYED"</strong>.</li>
+  <li>Agregar <code>COUNTER_REPLAYED</code> a la tabla 4.1 de escenarios de error, con la detección "counter menor o igual al guardado, o conflicto de escritura" y la respuesta 403.</li>
+  <li>Indicar que el enrolamiento usa <code>createItem</code> y no <code>upsert</code>.</li>
+  <li>Acordar con el equipo móvil cómo se manejan las peticiones protegidas en paralelo.</li>
+</ul>
+
+</main>
+
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
+
+const D = {
+  'race-replay': `sequenceDiagram
+    autonumber
+    participant ATK as Atacante (ráfaga)
+    participant S1 as Servicio réplica 1
+    participant S2 as Servicio réplica 2
+    participant C as Cosmos DB
+    par Petición A
+        ATK->>S1: assertion counter 6
+    and Petición B
+        ATK->>S2: la misma assertion counter 6
+    end
+    S1->>C: Lee counter
+    C-->>S1: 5
+    S2->>C: Lee counter
+    C-->>S2: 5
+    S1->>S1: 6 mayor que 5, firma ok
+    S2->>S2: 6 mayor que 5, firma ok
+    S1->>C: Escribe 6 (sin condición)
+    S2->>C: Escribe 6 (sin condición)
+    S1-->>ATK: ALLOW
+    S2-->>ATK: ALLOW
+    Note over ATK,C: Una aserción, dos operaciones aceptadas`,
+
+  'race-regression': `sequenceDiagram
+    autonumber
+    participant App as App iOS
+    participant S1 as Servicio réplica 1
+    participant S2 as Servicio réplica 2
+    participant C as Cosmos DB
+    App->>S1: assertion counter 6
+    App->>S2: assertion counter 7
+    S1->>C: Lee counter
+    C-->>S1: 5
+    S2->>C: Lee counter
+    C-->>S2: 5
+    S2->>C: Escribe 7
+    S1->>C: Escribe 6 (pisa el 7)
+    Note over C: counter guardado = 6
+    S1-->>App: ALLOW
+    S2-->>App: ALLOW
+    Note over App,C: Después, la assertion 7 se puede reenviar y pasa (7 mayor que 6)`,
+
+  'fixed-replay': `sequenceDiagram
+    autonumber
+    participant ATK as Atacante (ráfaga)
+    participant S1 as Réplica 1
+    participant S2 as Réplica 2
+    participant C as Cosmos DB
+    S1->>C: Lee counter
+    C-->>S1: 5, etag v1
+    S2->>C: Lee counter
+    C-->>S2: 5, etag v1
+    S1->>C: Escribe 6, If-Match v1
+    C-->>S1: OK, etag v2
+    S1-->>ATK: ALLOW
+    S2->>C: Escribe 6, If-Match v1
+    C-->>S2: 412 Precondition Failed
+    S2->>C: Vuelve a leer
+    C-->>S2: 6, etag v2
+    S2->>S2: 6 no es mayor que 6
+    S2-->>ATK: DENY COUNTER_REPLAYED`,
+
+  'fixed-regression': `sequenceDiagram
+    autonumber
+    participant S1 as Réplica 1 (assertion 6)
+    participant S2 as Réplica 2 (assertion 7)
+    participant C as Cosmos DB
+    S1->>C: Lee counter
+    C-->>S1: 5, etag v1
+    S2->>C: Lee counter
+    C-->>S2: 5, etag v1
+    S2->>C: Escribe 7, If-Match v1
+    C-->>S2: OK, etag v2
+    S1->>C: Escribe 6, If-Match v1
+    C-->>S1: 412 Precondition Failed
+    S1->>C: Vuelve a leer
+    C-->>S1: 7, etag v2
+    S1->>S1: 6 no es mayor que 7, DENY
+    Note over C: counter guardado = 7, nunca baja`,
+
+  flow: `flowchart TD
+    A([Assertion con firma y rpIdHash válidos]) --> B[Lee documento del keyId con su etag]
+    B --> C{counter de la assertion mayor al guardado}
+    C -- No --> X1[DENY COUNTER_REPLAYED]
+    C -- Sí --> D[Escribe el counter nuevo con If-Match etag]
+    D --> E{Respuesta de Cosmos DB}
+    E -- 200 OK --> OK[ALLOW]
+    E -- 412 Precondition Failed --> R{Quedan reintentos}
+    R -- Sí --> B
+    R -- No --> X2[DENY COUNTER_CONTENTION]
+    classDef bad fill:#FDECEC,stroke:#B91C1C,color:#7F1D1D
+    classDef good fill:#E8F7EE,stroke:#15803D,color:#14532D
+    classDef key fill:#FFF4D6,stroke:#B7791F,color:#7A4F0F
+    class X1,X2 bad
+    class OK good
+    class D key`
+};
+
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  themeVariables: {
+    primaryColor: '#EEF2FF',
+    primaryBorderColor: '#001391',
+    primaryTextColor: '#001391',
+    lineColor: '#46536D',
+    actorBkg: '#EEF2FF',
+    actorBorder: '#001391',
+    actorTextColor: '#001391',
+    actorLineColor: '#9AA6C4',
+    signalColor: '#46536D',
+    signalTextColor: '#1F2937',
+    noteBkgColor: '#FFF4D6',
+    noteBorderColor: '#B7791F',
+    noteTextColor: '#1F2937',
+    labelBoxBkgColor: '#FFF4D6',
+    labelBoxBorderColor: '#B7791F',
+    loopTextColor: '#1F2937',
+    sequenceNumberColor: '#FFFFFF'
+  },
+  sequence: { mirrorActors: true, useMaxWidth: false, actorMargin: 30, messageMargin: 30 },
+  flowchart: { useMaxWidth: false, htmlLabels: false, curve: 'basis' }
+});
+
+function fitSvg(svg) {
+  const pad = 12;
+  const bb = svg.getBBox();
+  const w = Math.ceil(bb.width + pad * 2);
+  const h = Math.ceil(bb.height + pad * 2);
+  svg.setAttribute('viewBox', `${bb.x - pad} ${bb.y - pad} ${w} ${h}`);
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  svg.style.maxWidth = '100%';
+  svg.style.height = 'auto';
+}
+
+function pngBlob(svg, scale = 2) {
+  const clone = svg.cloneNode(true);
+  const w = +svg.getAttribute('width');
+  const h = +svg.getAttribute('height');
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.style.maxWidth = '';
+  const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone));
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = w * scale;
+      c.height = h * scale;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0, w, h);
+      c.toBlob(b => (b ? resolve(b) : reject(new Error('PNG'))), 'image/png');
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+for (const card of document.querySelectorAll('[data-diagram]')) {
+  const key = card.dataset.diagram;
+  const target = card.querySelector('.diagram');
+  try {
+    const { svg } = await mermaid.render(`svg-${key}`, D[key]);
+    target.innerHTML = svg;
+    const el = target.querySelector('svg');
+    fitSvg(el);
+    const btn = document.createElement('button');
+    btn.textContent = 'Descargar PNG';
+    btn.onclick = async () => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(await pngBlob(el));
+      a.download = `iOS-Counter-${key}.png`;
+      a.click();
+    };
+    card.querySelector('.card-head').appendChild(btn);
+  } catch (e) {
+    target.textContent = 'Error al renderizar: ' + (e.message || e);
+  }
+}
+</script>
+</body>
+</html>

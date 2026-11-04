@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contradicciones internas — propuesta AppSec</title>
+<style>
+  :root {
+    --brand: #001391;
+    --ink: #1F2937;
+    --muted: #46536D;
+    --line: #D6DCEB;
+    --bg: #F5F7FC;
+    --bad: #B91C1C;
+    --bad-bg: #FDECEC;
+    --good: #15803D;
+    --good-bg: #E8F7EE;
+    --warn: #B7791F;
+    --warn-bg: #FFF8E6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.55;
+  }
+  header { background: var(--brand); color: #fff; padding: 28px 40px; }
+  header h1 { margin: 0 0 6px; font-size: 24px; }
+  header p { margin: 0; opacity: .88; max-width: 920px; }
+  header code { background: rgba(255,255,255,.15); color: #fff; }
+  main { max-width: 1200px; margin: 0 auto; padding: 24px 40px 60px; }
+  h2 { color: var(--brand); border-bottom: 2px solid var(--brand); padding-bottom: 6px; margin-top: 44px; }
+  h3 { margin: 26px 0 8px; }
+  p, li { font-size: 15px; }
+  code { background: #EEF2FF; padding: 1px 5px; border-radius: 4px; font-size: 13.5px; }
+  a { color: var(--brand); }
+  pre {
+    background: #0F172A;
+    color: #E2E8F0;
+    padding: 16px 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+  .callout {
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    border: 1px solid;
+    border-left-width: 5px;
+  }
+  .callout.bad { background: var(--bad-bg); border-color: #F5C2C2; border-left-color: var(--bad); }
+  .callout.good { background: var(--good-bg); border-color: #BDE5CB; border-left-color: var(--good); }
+  .callout.warn { background: var(--warn-bg); border-color: #F1D49A; border-left-color: var(--warn); }
+  .callout > strong:first-child { display: block; margin-bottom: 4px; }
+  .card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin: 16px 0 24px;
+    overflow: hidden;
+  }
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line);
+    background: #FAFBFE;
+    gap: 12px;
+  }
+  .card-head h4 { margin: 0; font-size: 14.5px; }
+  .tag { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+  .tag.bad { background: var(--bad-bg); color: var(--bad); }
+  .tag.good { background: var(--good-bg); color: var(--good); }
+  .tag.neutral { background: #EEF2FF; color: var(--brand); }
+  .card-head button {
+    border: 1px solid var(--brand);
+    background: #fff;
+    color: var(--brand);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .card-head button:hover { background: var(--brand); color: #fff; }
+  .diagram { padding: 16px; overflow-x: auto; text-align: center; }
+  .diagram svg { max-width: 100%; height: auto; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+  table { border-collapse: collapse; width: 100%; background: #fff; font-size: 14px; margin: 12px 0; }
+  th, td { border: 1px solid var(--line); padding: 9px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--brand); color: #fff; }
+  td.says { background: var(--bad-bg); }
+  td.should { background: var(--good-bg); }
+  .tldr {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-left: 6px solid var(--brand);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-top: 8px;
+  }
+  .pair {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 16px;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .pair .bad { background: #FDE2E2; color: var(--bad); font-weight: 700; }
+  .pair .ok { background: #DCFCE7; color: var(--good); font-weight: 700; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Contradicciones internas del documento</h1>
+  <p>Siete sitios de <code>propuesta_arquitectura_appsec_v2</code> que no coinciden entre sí. No son matices de redacción: si Android usa un nombre de header y iOS otro, o si el hash usa <code>|</code> en un lado y <code>||</code> en el otro, la validación falla en producción o se implementa dos veces.</p>
+</header>
+<main>
+
+<section class="tldr">
+  <strong>Cómo leer la tabla.</strong> “Qué dice” es el texto actual. “Qué debería decir” es la postura para unificar el documento, los diagramas y el código. Las más peligrosas son el header de plataforma, el separador del hash y el payload canónico: esas tres hacen que app y servidor calculen cosas distintas.
+</section>
+
+<table>
+  <thead>
+    <tr><th>Dónde</th><th>Qué dice</th><th>Qué debería decir</th><th>Si no se corrige</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Títulos de Tier 1 (Android e iOS)</td>
+      <td class="says">“validación en el BFF”</td>
+      <td class="should">La orquesta APIM; valida <code>smp-device-integrity-service</code>; el backend de negocio solo recibe la decisión</td>
+      <td>Alguien implementa la validación otra vez en el BFF, o cree que APIM no aplica</td>
+    </tr>
+    <tr>
+      <td>Nota de Huawei Tier 1</td>
+      <td class="says">“el cliente y el BFF calculan nonce”</td>
+      <td class="should">La app y <code>smp-device-integrity-service</code>. El BFF no ve el nonce</td>
+      <td>El nonce se calcula dos veces, en sitios distintos, y no coinciden</td>
+    </tr>
+    <tr>
+      <td>Consideraciones de despliegue</td>
+      <td class="says">“solo lo invocan APIM y el BFF”</td>
+      <td class="should">Solo APIM, salvo decisión explícita de que el BFF también lo invoque</td>
+      <td>Dos caminos de llamada, dos políticas, más superficie para saltarse APIM</td>
+    </tr>
+    <tr>
+      <td>Headers de plataforma</td>
+      <td class="says"><code>X-PLATFORM-ID</code> en §1.3, <code>X-INTEGRITY-PLATFORM</code> en los diagramas</td>
+      <td class="should">Un solo nombre, catálogo cerrado: <code>android</code>, <code>huawei</code>, <code>ios</code></td>
+      <td>La app manda uno, APIM lee el otro, la plataforma queda vacía o se toma del cliente sin control</td>
+    </tr>
+    <tr>
+      <td>Fórmula del hash</td>
+      <td class="says"><code>|</code> en la parte 1, <code>||</code> en Huawei e iOS</td>
+      <td class="should">Separador literal fijo <code>|</code>, UTF-8, orden y formato de <code>amount</code> definidos</td>
+      <td>Todos los hashes de Tier 1 fallan, o coinciden a veces según quién implementó qué diagrama</td>
+    </tr>
+    <tr>
+      <td>Payload canónico</td>
+      <td class="says">Solo <code>destination_account | amount | currency</code></td>
+      <td class="should">Catálogo por operación. PIN, login, enrolamiento y Plin no tienen esos campos</td>
+      <td>Esas operaciones no se pueden ligar al challenge, o se inventa un payload vacío</td>
+    </tr>
+    <tr>
+      <td>Nombres</td>
+      <td class="says">“CosmoDB”, “challengue”</td>
+      <td class="should">“Cosmos DB”, “challenge”</td>
+      <td>Ruido en el documento y en búsquedas; no rompe el runtime</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>1. Quién valida: BFF o APIM</h2>
+<p>El flujo dibujado en el resto del documento es claro: APIM llama al servicio <strong>antes</strong> de reenviar al backend. Los títulos de Tier 1 y la nota de Huawei hablan de un BFF que no aparece en ese camino. Si el BFF también calcula el nonce o también llama al servicio, hay dos implementaciones.</p>
+<div class="grid2">
+  <div class="card" data-diagram="bff">
+    <div class="card-head"><h4>Lo que sugieren los títulos</h4><span class="tag bad">Contradice el flujo</span></div>
+    <div class="diagram"></div>
+  </div>
+  <div class="card" data-diagram="apim">
+    <div class="card-head"><h4>Lo que debería quedar escrito</h4><span class="tag good">Un solo orquestador</span></div>
+    <div class="diagram"></div>
+  </div>
+</div>
+<div class="callout warn">
+  <strong>Sobre “APIM y el BFF invocan el servicio”</strong>
+  Si el BFF es un llamante más, hay que dibujarlo, darle red, identidad y la misma política que APIM. Si no se va a usar, hay que borrar esa frase. La postura: <strong>solo APIM</strong>, hasta que alguien justifique un segundo llamante.
+</div>
+
+<h2>2. Un header, tres valores</h2>
+<p>§1.3 nombra <code>X-PLATFORM-ID</code>. Los diagramas nombran <code>X-INTEGRITY-PLATFORM</code>. La app, APIM y el servicio tienen que leer el mismo. Además hace falta un catálogo cerrado: cualquier otro valor es 400, no un switch nuevo.</p>
+<div class="card" data-diagram="headers">
+  <div class="card-head"><h4>Dos nombres = dos lecturas</h4><span class="tag bad">Se pierden</span></div>
+  <div class="diagram"></div>
+</div>
+<div class="callout good">
+  <strong>Nombre único propuesto</strong>
+  <code>X-INTEGRITY-PLATFORM</code>, valores <code>android</code> | <code>huawei</code> | <code>ios</code>, en minúsculas. APIM borra cualquier otro. La plataforma efectiva, cuando exista enrolamiento, sale del registro del <code>deviceid</code>, no solo de este header (ver HTML de suplantación de plataforma).
+</div>
+
+<h2>3. El separador del hash no es un detalle</h2>
+<p>El hash liga el challenge a la operación: <code>SHA256(server_nonce | payload_canonico)</code>. Si la app concatena con un palo y el servicio con dos, las cadenas son distintas y el hash nunca coincide. En ENFORCE, <strong>todas</strong> las operaciones Tier 1 se deniegan.</p>
+<div class="pair">App (parte 1):     SHA256( nonce + "<span class="ok">|</span>" + payload )
+Servicio (Huawei/iOS): SHA256( nonce + "<span class="bad">||</span>" + payload )
+
+nonce   = a1b2
+payload = 0011223344|100.00|PEN
+
+app      → SHA256("a1b2|0011223344|100.00|PEN")
+servicio → SHA256("a1b2||0011223344|100.00|PEN")   ← no coinciden</div>
+<div class="card" data-diagram="hash">
+  <div class="card-head"><h4>Un palo de más y Tier 1 se cae entero</h4><span class="tag bad">Falla de integración</span></div>
+  <div class="diagram"></div>
+</div>
+<table>
+  <thead><tr><th>Regla</th><th>Valor fijo</th></tr></thead>
+  <tbody>
+    <tr><td>Separador</td><td>Un solo carácter ASCII <code>|</code> (0x7C). Nunca <code>||</code>, nunca coma.</td></tr>
+    <tr><td>Codificación</td><td>UTF-8, sin BOM. El hash se calcula sobre los bytes, no sobre un string Unicode abstracto.</td></tr>
+    <tr><td>Orden</td><td>El del catálogo de la operación, de izquierda a derecha. No se reordenan campos.</td></tr>
+    <tr><td>Espacios</td><td>Ninguno alrededor del separador. Los valores no se recortan salvo que el catálogo lo diga.</td></tr>
+    <tr><td><code>amount</code></td><td>Decimal con punto, dos decimales, sin miles: <code>100.00</code>, no <code>100</code>, <code>100,00</code> ni <code>1,000.00</code>.</td></tr>
+    <tr><td><code>currency</code></td><td>ISO 4217 en mayúsculas: <code>PEN</code>.</td></tr>
+    <tr><td>Quién concatena</td><td>La app arma <code>SHA256(nonce | payload)</code> para el proveedor. El servicio vuelve a armarlo con el nonce de Redis y el payload que mandó APIM, <strong>sin</strong> el nonce que traiga el cliente.</td></tr>
+  </tbody>
+</table>
+
+<h2>4. Payload canónico por operación</h2>
+<p>La fórmula de la parte 1 asume una transferencia: cuenta destino, monto, moneda. Login, cambio de PIN, enrolamiento de App Attest y Plin no tienen esos tres campos. Si se fuerza esa terna, o se manda vacío, el challenge no queda ligado a lo que el usuario está haciendo.</p>
+<div class="card" data-diagram="payload">
+  <div class="card-head"><h4>La misma terna no sirve para PIN ni Plin</h4><span class="tag bad">Hueco</span></div>
+  <div class="diagram"></div>
+</div>
+<p>Propuesta: el payload <strong>siempre</strong> empieza por el identificador de operación, y después van los campos de esa operación. APIM envía el payload ya canónico (sin nonce). El servicio lo concatena con el nonce de Redis.</p>
+<table>
+  <thead><tr><th>Operación</th><th>payload_canonico</th><th>Notas</th></tr></thead>
+  <tbody>
+    <tr><td>Transferencia a cuenta</td><td><code>xfer_account|{destination_account}|{amount}|{currency}</code></td><td>Cuenta sin espacios, amount y currency como arriba</td></tr>
+    <tr><td>Plin</td><td><code>plin|{alias_or_phone}|{amount}|{currency}</code></td><td>No hay <code>destination_account</code></td></tr>
+    <tr><td>Pago de servicios</td><td><code>billpay|{service_code}|{amount}|{currency}</code></td><td></td></tr>
+    <tr><td>Cambio de PIN</td><td><code>pin_change|{deviceid}</code></td><td>El PIN no entra en el hash</td></tr>
+    <tr><td>Login</td><td><code>login|{deviceid}|{channel}</code></td><td>Sin monto</td></tr>
+    <tr><td>Enrolamiento iOS</td><td><code>ios_enroll|{deviceid}</code></td><td>El challenge de enrolamiento ya es de un solo uso</td></tr>
+  </tbody>
+</table>
+<div class="callout warn">
+  <strong>El catálogo lo cierran Producto y AppSec</strong>
+  Esta tabla es un punto de partida. Cada operación Tier 1 tiene que tener una fila antes de ENFORCE. Si aparece una operación nueva sin fila, APIM responde 400, no se inventa un payload.
+</div>
+
+<h2>5. Nombres</h2>
+<p>Sustituir en todo el documento y en los diagramas: <code>CosmoDB</code> → <code>Cosmos DB</code>, <code>challengue</code> → <code>challenge</code>. Añadir un glosario de una página para que no vuelvan a entrar.</p>
+
+<h2>6. Texto sugerido para el documento</h2>
+<div class="callout warn">
+  <strong>Párrafo de unificación (sección de flujo + glosario)</strong>
+  "APIM es el único orquestador: llama a smp-device-integrity-service y aplica la decisión. El backend de negocio no valida integridad ni calcula el nonce. El BFF no invoca el servicio salvo decisión expresa. Header de plataforma: X-INTEGRITY-PLATFORM, valores android | huawei | ios. Hash Tier 1: SHA256(nonce | payload_canonico) con separador ASCII 0x7C, UTF-8. payload_canonico sigue el catálogo por operación; no se usa una terna fija de cuenta-monto-moneda. Cosmos DB y challenge se escriben así en todo el documento."
+</div>
+
+</main>
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
+
+const D = {
+  bff: `sequenceDiagram
+    autonumber
+    participant App as App
+    participant BFF as BFF
+    participant INT as smp-device-integrity-service
+    App->>BFF: Operación
+    Note over BFF: El título dice que valida aquí
+    BFF->>INT: ¿Evalúa?
+    INT-->>BFF: Decisión
+    BFF-->>App: Respuesta
+    Note over App,INT: APIM no aparece. El fragmento de política no corre.`,
+
+  apim: `sequenceDiagram
+    autonumber
+    participant App as App
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    participant BE as Backend de negocio
+    App->>APIM: Operación + evidencia
+    APIM->>INT: Evalúa
+    INT-->>APIM: ALLOW o DENY
+    APIM->>BE: Operación + X-Integrity-Decision
+    Note over APIM: El BFF, si existe, está detrás o no participa`,
+
+  headers: `sequenceDiagram
+    autonumber
+    participant App as App (lee 1.3)
+    participant APIM as APIM (lee el diagrama)
+    App->>APIM: X-PLATFORM-ID android
+    APIM->>APIM: Busca X-INTEGRITY-PLATFORM
+    APIM->>APIM: Vacío, no sabe la plataforma
+    Note over App,APIM: O al revés: la app manda el del diagrama y el fragmento lee el de 1.3`,
+
+  hash: `sequenceDiagram
+    autonumber
+    participant App as App
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    App->>App: SHA256 con separador un palo
+    App->>APIM: Token + operación
+    APIM->>INT: Payload canónico
+    INT->>INT: SHA256 con separador dos palos
+    INT-->>APIM: DENY HASH_MISMATCH
+    Note over App,INT: En ENFORCE se cae toda operación Tier 1`,
+
+  payload: `flowchart TD
+    A([Operación Tier 1]) --> B{¿Tiene cuenta, monto y moneda?}
+    B -- Transferencia --> C[payload = cuenta + monto + moneda]
+    B -- Plin --> D[No hay destination_account]
+    B -- PIN o login --> E[No hay amount ni currency]
+    B -- Enrolamiento iOS --> F[Solo challenge de enrolar]
+    D --> X[El documento no dice qué hashear]
+    E --> X
+    F --> X
+    classDef bad fill:#FDECEC,stroke:#B91C1C,color:#7F1D1D
+    class X bad`
+};
+
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  themeVariables: {
+    primaryColor: '#EEF2FF',
+    primaryBorderColor: '#001391',
+    primaryTextColor: '#001391',
+    lineColor: '#46536D',
+    actorBkg: '#EEF2FF',
+    actorBorder: '#001391',
+    actorTextColor: '#001391',
+    actorLineColor: '#9AA6C4',
+    signalColor: '#46536D',
+    signalTextColor: '#1F2937',
+    noteBkgColor: '#FFF4D6',
+    noteBorderColor: '#B7791F',
+    noteTextColor: '#1F2937',
+    labelBoxBkgColor: '#FFF4D6',
+    labelBoxBorderColor: '#B7791F',
+    loopTextColor: '#1F2937',
+    sequenceNumberColor: '#FFFFFF'
+  },
+  sequence: { mirrorActors: true, useMaxWidth: false, actorMargin: 28, messageMargin: 28 },
+  flowchart: { useMaxWidth: false, htmlLabels: false, curve: 'basis', wrappingWidth: 220 }
+});
+
+function fitSvg(svg) {
+  const pad = 12;
+  const bb = svg.getBBox();
+  const w = Math.ceil(bb.width + pad * 2);
+  const h = Math.ceil(bb.height + pad * 2);
+  svg.setAttribute('viewBox', `${bb.x - pad} ${bb.y - pad} ${w} ${h}`);
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  svg.style.maxWidth = '100%';
+  svg.style.height = 'auto';
+}
+
+function pngBlob(svg, scale = 2) {
+  const clone = svg.cloneNode(true);
+  const w = +svg.getAttribute('width');
+  const h = +svg.getAttribute('height');
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.style.maxWidth = '';
+  const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone));
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = w * scale;
+      c.height = h * scale;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0, w, h);
+      c.toBlob(b => (b ? resolve(b) : reject(new Error('PNG'))), 'image/png');
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+for (const card of document.querySelectorAll('[data-diagram]')) {
+  const key = card.dataset.diagram;
+  const target = card.querySelector('.diagram');
+  try {
+    const { svg } = await mermaid.render(`svg-${key}`, D[key]);
+    target.innerHTML = svg;
+    const el = target.querySelector('svg');
+    fitSvg(el);
+    const btn = document.createElement('button');
+    btn.textContent = 'Descargar PNG';
+    btn.onclick = async () => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(await pngBlob(el));
+      a.download = `Contradicciones-${key}.png`;
+      a.click();
+    };
+    card.querySelector('.card-head').appendChild(btn);
+  } catch (e) {
+    target.textContent = 'Error al renderizar: ' + (e.message || e);
+  }
+}
+</script>
+</body>
+</html>

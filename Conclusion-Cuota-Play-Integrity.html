@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cuota de Google Play Integrity — conclusión</title>
+<style>
+  :root {
+    --brand: #001391;
+    --ink: #1F2937;
+    --muted: #46536D;
+    --line: #D6DCEB;
+    --bg: #F5F7FC;
+    --bad: #B91C1C;
+    --bad-bg: #FDECEC;
+    --good: #15803D;
+    --good-bg: #E8F7EE;
+    --warn: #B7791F;
+    --warn-bg: #FFF8E6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.55;
+  }
+  header { background: var(--brand); color: #fff; padding: 28px 40px; }
+  header h1 { margin: 0 0 6px; font-size: 24px; }
+  header p { margin: 0; opacity: .88; max-width: 900px; }
+  main { max-width: 1200px; margin: 0 auto; padding: 24px 40px 60px; }
+  h2 { color: var(--brand); border-bottom: 2px solid var(--brand); padding-bottom: 6px; margin-top: 44px; }
+  h3 { margin: 26px 0 8px; }
+  p, li { font-size: 15px; }
+  code { background: #EEF2FF; padding: 1px 5px; border-radius: 4px; font-size: 13.5px; }
+  a { color: var(--brand); }
+  .callout {
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    border: 1px solid;
+    border-left-width: 5px;
+  }
+  .callout.bad { background: var(--bad-bg); border-color: #F5C2C2; border-left-color: var(--bad); }
+  .callout.good { background: var(--good-bg); border-color: #BDE5CB; border-left-color: var(--good); }
+  .callout.warn { background: var(--warn-bg); border-color: #F1D49A; border-left-color: var(--warn); }
+  .callout > strong:first-child { display: block; margin-bottom: 4px; }
+  .verdict {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-left: 6px solid var(--bad);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-top: 8px;
+  }
+  .verdict h2 { margin: 0 0 10px; border: 0; padding: 0; color: var(--bad); font-size: 20px; }
+  .verdict ol { margin: 8px 0 0; padding-left: 22px; }
+  .verdict li { margin: 5px 0; }
+  .card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin: 16px 0 24px;
+    overflow: hidden;
+  }
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line);
+    background: #FAFBFE;
+    gap: 12px;
+  }
+  .card-head h4 { margin: 0; font-size: 14.5px; }
+  .card-head button {
+    border: 1px solid var(--brand);
+    background: #fff;
+    color: var(--brand);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .card-head button:hover { background: var(--brand); color: #fff; }
+  .diagram { padding: 16px; overflow-x: auto; text-align: center; }
+  .diagram svg { max-width: 100%; height: auto; }
+  table { border-collapse: collapse; width: 100%; background: #fff; font-size: 14px; margin: 12px 0; }
+  th, td { border: 1px solid var(--line); padding: 9px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--brand); color: #fff; }
+  blockquote {
+    margin: 10px 0;
+    padding: 10px 16px;
+    background: #fff;
+    border-left: 4px solid var(--brand);
+    border-radius: 0 8px 8px 0;
+    font-size: 14.5px;
+    color: var(--ink);
+  }
+  blockquote .src { display: block; margin-top: 6px; font-size: 12.5px; color: var(--muted); }
+  .calc {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 20px 22px;
+    margin: 16px 0;
+  }
+  .calc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px 20px; }
+  @media (max-width: 900px) { .calc-grid { grid-template-columns: 1fr; } }
+  .calc label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  .calc input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-size: 15px;
+  }
+  .calc .note { font-size: 12.5px; color: var(--muted); margin-top: 10px; }
+  .results { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 20px; }
+  @media (max-width: 900px) { .results { grid-template-columns: 1fr; } }
+  .result {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .result h4 { margin: 0 0 4px; font-size: 14px; }
+  .result .big { font-size: 26px; font-weight: 700; }
+  .result .sub { font-size: 13px; color: var(--muted); }
+  .bar { height: 14px; background: #EEF2FF; border-radius: 999px; margin: 10px 0 6px; overflow: hidden; position: relative; }
+  .bar span { display: block; height: 100%; background: var(--bad); border-radius: 999px; }
+  .bar.ok span { background: var(--good); }
+  .result .times { font-weight: 700; }
+  .result.over .times { color: var(--bad); }
+  .result.under .times { color: var(--good); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Cuota de Google Play Integrity: hallazgos y conclusión</h1>
+  <p>Validación contra la documentación oficial de Google (consultada el 04/11/2026) del riesgo de cuota en la propuesta de <code style="background:rgba(255,255,255,.15);color:#fff">smp-device-integrity-service</code>.</p>
+</header>
+
+<main>
+
+<section class="verdict">
+  <h2>Conclusión</h2>
+  <p style="margin:0">El hallazgo se confirma y además es <strong>más amplio</strong> de lo que se planteó al inicio. Con la cuota por defecto, el diseño no puede salir a producción en una app de banca masiva.</p>
+  <ol>
+    <li><strong>Son dos cuotas, no una.</strong> Hay 10 000 descifrados al día y, aparte, 10 000 "token requests" al día. En la segunda cuenta también el <strong>warm-up</strong> (<code>prepareIntegrityToken</code>), que el documento hace en cada inicio de la app. Solo con los inicios de la app se puede agotar esa cuota antes de validar una sola operación.</li>
+    <li><strong>No hay alternativa local.</strong> Los tokens de las standard requests solo se descifran en los servidores de Google. Cada operación Tier 1 y Tier 2 de Android consume un descifrado.</li>
+    <li><strong>La ampliación no es inmediata ni automática.</strong> Requiere que la app esté en Google Play, que el proyecto de Google Cloud esté vinculado en Play Console y que la integración tenga reintentos bien hechos. La solicitud puede tardar hasta una semana.</li>
+    <li><strong>Agotar la cuota equivale a una caída.</strong> Cuando se agota, Google deja de responder a los descifrados, y el resultado depende de la política de contingencia, que sigue sin aprobar. Si es fail-closed, ningún usuario Android puede operar; si es fail-open, Android queda sin validación de integridad.</li>
+  </ol>
+  <p style="margin:12px 0 0"><strong>Acción:</strong> incluir en el plan del proyecto la estimación de volumen, la vinculación del proyecto, la solicitud de ampliación con al menos dos semanas de anticipación, las alertas de cuota y un despliegue gradual.</p>
+</section>
+
+<h2>1. Lo que dice Google (evidencia)</h2>
+
+<h3>1.1 Límites por defecto</h3>
+<blockquote>
+  "Your app or SDK has a default daily limit of 10,000 total requests, tied to the associated Cloud Project Number. If you anticipate a higher volume, you can request a quota increase."
+  <span class="src">Fuente: <a href="https://developer.android.com/google/play/integrity/setup#increase-daily" target="_blank">Play Integrity · Set up · Understand Play Integrity API usage limits</a></span>
+</blockquote>
+<table>
+  <thead><tr><th>Acción (tabla de Google)</th><th>Cuota diaria</th><th>Nota de Google</th><th>Qué la consume en la propuesta</th></tr></thead>
+  <tbody>
+    <tr><td>Token requests</td><td>10 000</td><td>"Shared between classic requests and standard token preparations"</td><td>El warm-up al iniciar la app, más cada vez que se vuelve a preparar el proveedor porque expiró (<code>INTEGRITY_TOKEN_PROVIDER_INVALID</code>)</td></tr>
+    <tr><td>Token decryptions on Google's servers</td><td>10 000</td><td>"Shared between classic and standard requests"</td><td>Cada <code>decodeIntegrityToken</code> que hace el servicio: todas las operaciones Tier 1 y Tier 2 de Android</td></tr>
+  </tbody>
+</table>
+
+<h3>1.2 El descifrado solo ocurre en Google</h3>
+<blockquote>
+  "After you request an integrity verdict, the Play Integrity API provides an encrypted response token. To obtain the device integrity verdicts, you must decrypt the integrity token on Google's servers."
+  <span class="src">Fuente: <a href="https://developer.android.com/google/play/integrity/standard#decrypt-and" target="_blank">Play Integrity · Make a standard API request · Decrypt and verify the integrity verdict</a></span>
+</blockquote>
+
+<h3>1.3 Cómo se pide la ampliación</h3>
+<blockquote>
+  "Quota increase is subject to eligibility criteria. Quota increases apply to both client-side token generation and server-side decryption calls. Processing requests can take up to a week. We recommend monitoring your Play Integrity API usage in your Google Cloud Console and setting quota alerts to avoid interruptions to your service."
+  <span class="src">Fuente: <a href="https://developer.android.com/google/play/integrity/setup#increase-daily-max" target="_blank">Play Integrity · Set up · Increase your daily maximum number of requests</a></span>
+</blockquote>
+<blockquote>
+  "To be eligible for a quota increase, your app must be available on Google Play in addition to any other distribution channels. You must link your Google Cloud project to your app in the Play Console. Quota requests from unlinked projects will be rejected."
+  <span class="src">Pasos: 1) vincular el proyecto en Play Console, 2) verificar la implementación, incluidos los reintentos, 3) enviar el <a href="https://support.google.com/googleplay/android-developer/contact/piaqr" target="_blank">formulario de solicitud de cuota</a>.</span>
+</blockquote>
+<blockquote>
+  "Very high volume changes should be rolled out gradually. Sudden traffic spikes may cause throttling."
+  <span class="src">Fuente: misma página, sección de ampliación de cuota.</span>
+</blockquote>
+
+<h3>1.4 Límite adicional del warm-up</h3>
+<blockquote>
+  "Each app instance can only prepare the integrity token up to 5 times per minute."
+  <span class="src">Fuente: <a href="https://developer.android.com/google/play/integrity/standard#prepare-integrity" target="_blank">Play Integrity · Make a standard API request · Prepare the integrity token provider</a></span>
+</blockquote>
+
+<h2>2. Dónde se consume cada cuota en la propuesta</h2>
+<div class="card" data-diagram="consumption">
+  <div class="card-head"><h4>Consumo de cuota por flujo</h4></div>
+  <div class="diagram"></div>
+</div>
+
+<h2>3. Estimación de volumen</h2>
+<p>Ingresa los valores reales de la app Personas. Los que aparecen por defecto son <strong>solo un ejemplo</strong> para ilustrar el orden de magnitud y no son datos del banco.</p>
+<div class="calc">
+  <div class="calc-grid">
+    <div><label for="dau">Usuarios activos diarios (todas las plataformas)</label><input id="dau" type="number" value="500000" min="0"></div>
+    <div><label for="android">% de usuarios Android con Google Play</label><input id="android" type="number" value="70" min="0" max="100"></div>
+    <div><label for="opens">Inicios de app por usuario al día (cada uno hace warm-up)</label><input id="opens" type="number" value="3" min="0" step="0.1"></div>
+    <div><label for="t1">Operaciones Tier 1 por usuario al día</label><input id="t1" type="number" value="0.5" min="0" step="0.1"></div>
+    <div><label for="t2">Operaciones Tier 2 por usuario al día</label><input id="t2" type="number" value="4" min="0" step="0.1"></div>
+    <div><label for="margin">Margen para picos (quincena, campañas)</label><input id="margin" type="number" value="2" min="1" step="0.5"></div>
+  </div>
+  <div class="results">
+    <div class="result" id="r-prep">
+      <h4>Token requests al día (warm-ups)</h4>
+      <div class="big" id="prep">—</div>
+      <div class="bar"><span id="prep-bar"></span></div>
+      <div class="sub"><span class="times" id="prep-times"></span> la cuota por defecto (10 000)</div>
+      <div class="sub">Cuota sugerida a solicitar: <strong id="prep-req"></strong></div>
+    </div>
+    <div class="result" id="r-dec">
+      <h4>Descifrados al día (Tier 1 + Tier 2)</h4>
+      <div class="big" id="dec">—</div>
+      <div class="bar"><span id="dec-bar"></span></div>
+      <div class="sub"><span class="times" id="dec-times"></span> la cuota por defecto (10 000)</div>
+      <div class="sub">Cuota sugerida a solicitar: <strong id="dec-req"></strong></div>
+    </div>
+  </div>
+  <p class="note">Fórmulas: warm-ups = usuarios × % Android × inicios. Descifrados = usuarios × % Android × (Tier 1 + Tier 2). La cuota sugerida es el volumen por el margen para picos. No incluye los re-warm-ups por expiración del proveedor ni los reintentos, así que es un piso.</p>
+  <p class="note" id="hours"></p>
+</div>
+
+<h2>4. Qué pasa si se agota</h2>
+<div class="card" data-diagram="exhausted">
+  <div class="card-head"><h4>Agotamiento de cuota en horario de operación</h4></div>
+  <div class="diagram"></div>
+</div>
+<div class="callout bad">
+  <strong>El riesgo operativo</strong>
+  La cuota es diaria. Si se agota a media mañana, el resto del día Android depende de la política de contingencia, que sigue pendiente de aprobar (sección 4.4 del documento):
+  <ul style="margin:6px 0 0">
+    <li><strong>Fail-closed:</strong> caída de operaciones para todos los clientes Android.</li>
+    <li><strong>Fail-open o DEGRADED:</strong> Android opera sin validación de integridad, que es justo lo que el proyecto busca evitar.</li>
+    <li><strong>Kill switch de Android:</strong> mismo efecto que fail-open, pero con intervención manual.</li>
+  </ul>
+  El servicio debe distinguir este error con un código propio (por ejemplo <code>PROVIDER_QUOTA_EXCEEDED</code>), separado de un timeout, para que la alerta y la respuesta sean específicas.
+</div>
+
+<h2>5. Comparación con las otras plataformas</h2>
+<table>
+  <thead><tr><th>Plataforma</th><th>¿Consume cuota externa por operación?</th><th>Estado</th></tr></thead>
+  <tbody>
+    <tr><td>Google Play Integrity</td><td>Sí: un descifrado por operación, y un token request por warm-up</td><td>Confirmado: 10 000 y 10 000 al día por defecto. Ampliable con condiciones.</td></tr>
+    <tr><td>Huawei SysIntegrity</td><td>La app llama a HMS en cada operación. El servidor puede validar el JWS localmente.</td><td>Cuota por confirmar con Huawei, como indica el propio documento.</td></tr>
+    <tr><td>Apple App Attest</td><td>No en las aserciones: se validan localmente con la clave guardada en Cosmos DB.</td><td>Sin cuota de backend. Apple sí limita el ritmo del enrolamiento: recomienda incorporar usuarios de forma gradual (no más de 10 millones por día) y mantener las llamadas de attestation por debajo de unas 100 por segundo en total (<a href="https://developer.apple.com/documentation/devicecheck/preparing-to-use-the-app-attest-service" target="_blank">Preparing to use the App Attest service</a>).</td></tr>
+  </tbody>
+</table>
+
+<h2>6. Plan propuesto</h2>
+<div class="card" data-diagram="plan">
+  <div class="card-head"><h4>Ruta hacia producción para la cuota</h4></div>
+  <div class="diagram"></div>
+</div>
+<table>
+  <thead><tr><th>#</th><th>Acción</th><th>Responsable sugerido</th><th>Criterio de cierre</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Estimar el volumen con datos reales (usuarios activos, inicios, operaciones por tier, pico de quincena)</td><td>Producto y Analítica</td><td>Cifras de warm-ups y descifrados al día, con el pico</td></tr>
+    <tr><td>2</td><td>Revisar el alcance de Tier 2: qué operaciones de verdad lo necesitan</td><td>AppSec y Producto</td><td>Catálogo de operaciones por tier aprobado. Reduce el volumen de descifrados.</td></tr>
+    <tr><td>3</td><td>Vincular el proyecto de Google Cloud a la app en Play Console ("Protected with Play")</td><td>Equipo móvil</td><td>Proyecto vinculado</td></tr>
+    <tr><td>4</td><td>Implementar reintentos con backoff en el servicio y en la app, y el código <code>PROVIDER_QUOTA_EXCEEDED</code></td><td>Equipo de desarrollo</td><td>Requisito previo de Google para la solicitud</td></tr>
+    <tr><td>5</td><td>Enviar el <a href="https://support.google.com/googleplay/android-developer/contact/piaqr" target="_blank">formulario de cuota</a> con la cifra estimada por el margen</td><td>Dueño del proyecto de Google Cloud</td><td>Cuota aprobada. Pedirla al menos 2 semanas antes del pase, porque Google indica hasta 1 semana.</td></tr>
+    <tr><td>6</td><td>Configurar alertas de cuota en Google Cloud Console (por ejemplo al 50, 80 y 95 %) y un tablero de consumo</td><td>Operaciones y SRE</td><td>Alertas probadas</td></tr>
+    <tr><td>7</td><td>Desplegar de forma gradual: porcentaje de usuarios en MONITOR y luego ENFORCE</td><td>Equipo móvil y Operaciones</td><td>Sin throttling y con el consumo dentro de lo estimado</td></tr>
+    <tr><td>8</td><td>Aprobar la política para cuota agotada (fail-open, fail-closed o DEGRADED por tier)</td><td>Riesgos y AppSec</td><td>Política aprobada e implementada</td></tr>
+  </tbody>
+</table>
+
+<h2>7. Texto sugerido para el documento</h2>
+<div class="callout warn">
+  <strong>Para reemplazar la fila "Límites y cuotas" de Google en la tabla 2.4</strong>
+  "Cuota por defecto por proyecto de Google Cloud: 10 000 token requests al día (incluye cada <code>prepareIntegrityToken</code>) y 10 000 descifrados al día (uno por cada operación Tier 1 y Tier 2). Los tokens de standard requests solo se descifran en servidores de Google. La ampliación requiere que la app esté en Google Play, que el proyecto esté vinculado en Play Console y que la integración tenga reintentos. Google indica que el trámite puede tardar hasta una semana. Es un requisito previo al pase a producción."
+</div>
+
+</main>
+
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
+
+const D = {
+  consumption: `sequenceDiagram
+    autonumber
+    participant App as App Android
+    participant GPS as Google Play Services
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    participant G as Google decodeIntegrityToken
+    Note over App,GPS: Al iniciar la app
+    App->>GPS: prepareIntegrityToken (warm-up)
+    Note over GPS: Consume 1 token request (cuota A)
+    Note over App,G: En cada operación Tier 1 o Tier 2
+    App->>GPS: request(requestHash)
+    GPS-->>App: integrityToken
+    App->>APIM: Operación + token
+    APIM->>INT: Evalúa
+    INT->>G: decodeIntegrityToken
+    Note over G: Consume 1 descifrado (cuota B)
+    G-->>INT: Veredictos`,
+
+  exhausted: `sequenceDiagram
+    autonumber
+    participant App as App Android
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    participant G as Google decodeIntegrityToken
+    Note over G: 10 000 descifrados consumidos a media mañana
+    App->>APIM: Operación + token válido
+    APIM->>INT: Evalúa
+    INT->>G: decodeIntegrityToken
+    G--xINT: Error de cuota agotada
+    INT-->>APIM: PROVIDER_QUOTA_EXCEEDED
+    alt Fail-closed
+        APIM-->>App: 403, el cliente no puede operar
+    else Fail-open o DEGRADED
+        APIM->>APIM: Reenvía sin validación de integridad
+    end
+    Note over App,G: Se repite para todos los Android hasta el reinicio de la cuota`,
+
+  plan: `flowchart LR
+    A[1. Estimar volumen real] --> B[2. Ajustar alcance de Tier 2]
+    B --> C[3. Vincular proyecto en Play Console]
+    C --> D[4. Reintentos y código de cuota]
+    D --> E[5. Formulario de cuota, hasta 1 semana]
+    E --> F[6. Alertas y tablero]
+    F --> G[7. Despliegue gradual MONITOR a ENFORCE]
+    H[8. Política de cuota agotada] --> G
+    classDef crit fill:#FDECEC,stroke:#B91C1C,color:#7F1D1D
+    classDef step fill:#EEF2FF,stroke:#001391,color:#001391
+    class E,H crit
+    class A,B,C,D,F,G step`
+};
+
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  themeVariables: {
+    primaryColor: '#EEF2FF',
+    primaryBorderColor: '#001391',
+    primaryTextColor: '#001391',
+    lineColor: '#46536D',
+    actorBkg: '#EEF2FF',
+    actorBorder: '#001391',
+    actorTextColor: '#001391',
+    actorLineColor: '#9AA6C4',
+    signalColor: '#46536D',
+    signalTextColor: '#1F2937',
+    noteBkgColor: '#FFF4D6',
+    noteBorderColor: '#B7791F',
+    noteTextColor: '#1F2937',
+    labelBoxBkgColor: '#FFF4D6',
+    labelBoxBorderColor: '#B7791F',
+    sequenceNumberColor: '#FFFFFF'
+  },
+  sequence: { mirrorActors: true, useMaxWidth: false, actorMargin: 30, messageMargin: 30 },
+  flowchart: { useMaxWidth: false, htmlLabels: false, curve: 'basis' }
+});
+
+function fitSvg(svg) {
+  const pad = 12;
+  const bb = svg.getBBox();
+  const w = Math.ceil(bb.width + pad * 2);
+  const h = Math.ceil(bb.height + pad * 2);
+  svg.setAttribute('viewBox', `${bb.x - pad} ${bb.y - pad} ${w} ${h}`);
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  svg.style.maxWidth = '100%';
+  svg.style.height = 'auto';
+}
+
+function pngBlob(svg, scale = 2) {
+  const clone = svg.cloneNode(true);
+  const w = +svg.getAttribute('width');
+  const h = +svg.getAttribute('height');
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.style.maxWidth = '';
+  const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone));
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = w * scale;
+      c.height = h * scale;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0, w, h);
+      c.toBlob(b => (b ? resolve(b) : reject(new Error('PNG'))), 'image/png');
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+for (const card of document.querySelectorAll('[data-diagram]')) {
+  const key = card.dataset.diagram;
+  const target = card.querySelector('.diagram');
+  try {
+    const { svg } = await mermaid.render(`svg-${key}`, D[key]);
+    target.innerHTML = svg;
+    const el = target.querySelector('svg');
+    fitSvg(el);
+    const btn = document.createElement('button');
+    btn.textContent = 'Descargar PNG';
+    btn.onclick = async () => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(await pngBlob(el));
+      a.download = `Cuota-${key}.png`;
+      a.click();
+    };
+    card.querySelector('.card-head').appendChild(btn);
+  } catch (e) {
+    target.textContent = 'Error al renderizar: ' + (e.message || e);
+  }
+}
+
+const QUOTA = 10000;
+const fmt = n => Math.round(n).toLocaleString('es-PE');
+const val = id => Math.max(0, parseFloat(document.getElementById(id).value) || 0);
+
+function paint(prefix, value, margin) {
+  const ratio = value / QUOTA;
+  document.getElementById(prefix).textContent = fmt(value);
+  document.getElementById(`${prefix}-times`).textContent =
+    ratio >= 1 ? `${ratio.toLocaleString('es-PE', { maximumFractionDigits: 1 })} veces` : `${Math.round(ratio * 100)} % de`;
+  document.getElementById(`${prefix}-req`).textContent = fmt(Math.max(QUOTA, value * margin));
+  const bar = document.getElementById(`${prefix}-bar`);
+  bar.style.width = `${Math.min(100, ratio * 100)}%`;
+  bar.parentElement.classList.toggle('ok', ratio < 1);
+  const box = document.getElementById(`r-${prefix}`);
+  box.classList.toggle('over', ratio >= 1);
+  box.classList.toggle('under', ratio < 1);
+  return ratio;
+}
+
+function recalc() {
+  const androidUsers = val('dau') * val('android') / 100;
+  const prep = androidUsers * val('opens');
+  const dec = androidUsers * (val('t1') + val('t2'));
+  const margin = Math.max(1, val('margin'));
+  paint('prep', prep, margin);
+  const decRatio = paint('dec', dec, margin);
+  const hours = decRatio > 0 ? 24 / decRatio : Infinity;
+  document.getElementById('hours').textContent = decRatio >= 1
+    ? `Con estos valores y un consumo uniforme, la cuota de descifrados se agotaría en unos ${hours < 1 ? Math.round(hours * 60) + ' minutos' : hours.toLocaleString('es-PE', { maximumFractionDigits: 1 }) + ' horas'} de operación.`
+    : 'Con estos valores, el consumo cabe en la cuota por defecto.';
+}
+
+document.querySelectorAll('.calc input').forEach(i => i.addEventListener('input', recalc));
+recalc();
+</script>
+</body>
+</html>

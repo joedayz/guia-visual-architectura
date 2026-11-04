@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rate limit de /deviceintegrity/initiate — explicación</title>
+<style>
+  :root {
+    --brand: #001391;
+    --ink: #1F2937;
+    --muted: #46536D;
+    --line: #D6DCEB;
+    --bg: #F5F7FC;
+    --bad: #B91C1C;
+    --bad-bg: #FDECEC;
+    --good: #15803D;
+    --good-bg: #E8F7EE;
+    --warn: #B7791F;
+    --warn-bg: #FFF8E6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.55;
+  }
+  header { background: var(--brand); color: #fff; padding: 28px 40px; }
+  header h1 { margin: 0 0 6px; font-size: 24px; }
+  header p { margin: 0; opacity: .88; max-width: 920px; }
+  header code { background: rgba(255,255,255,.15); color: #fff; }
+  main { max-width: 1200px; margin: 0 auto; padding: 24px 40px 60px; }
+  h2 { color: var(--brand); border-bottom: 2px solid var(--brand); padding-bottom: 6px; margin-top: 44px; }
+  h3 { margin: 26px 0 8px; }
+  p, li { font-size: 15px; }
+  code { background: #EEF2FF; padding: 1px 5px; border-radius: 4px; font-size: 13.5px; }
+  a { color: var(--brand); }
+  pre {
+    background: #0F172A;
+    color: #E2E8F0;
+    padding: 16px 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+  .callout {
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    border: 1px solid;
+    border-left-width: 5px;
+  }
+  .callout.bad { background: var(--bad-bg); border-color: #F5C2C2; border-left-color: var(--bad); }
+  .callout.good { background: var(--good-bg); border-color: #BDE5CB; border-left-color: var(--good); }
+  .callout.warn { background: var(--warn-bg); border-color: #F1D49A; border-left-color: var(--warn); }
+  .callout > strong:first-child { display: block; margin-bottom: 4px; }
+  .card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin: 16px 0 24px;
+    overflow: hidden;
+  }
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line);
+    background: #FAFBFE;
+    gap: 12px;
+  }
+  .card-head h4 { margin: 0; font-size: 14.5px; }
+  .tag { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+  .tag.bad { background: var(--bad-bg); color: var(--bad); }
+  .tag.good { background: var(--good-bg); color: var(--good); }
+  .tag.neutral { background: #EEF2FF; color: var(--brand); }
+  .card-head button {
+    border: 1px solid var(--brand);
+    background: #fff;
+    color: var(--brand);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .card-head button:hover { background: var(--brand); color: #fff; }
+  .diagram { padding: 16px; overflow-x: auto; text-align: center; }
+  .diagram svg { max-width: 100%; height: auto; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+  table { border-collapse: collapse; width: 100%; background: #fff; font-size: 14px; margin: 12px 0; }
+  th, td { border: 1px solid var(--line); padding: 9px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--brand); color: #fff; }
+  td.deny { background: var(--bad-bg); color: var(--bad); font-weight: 600; }
+  td.ok { background: var(--good-bg); color: var(--good); font-weight: 600; }
+  td.warn { background: var(--warn-bg); color: #7A4F0F; font-weight: 600; }
+  .tldr {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-left: 6px solid var(--brand);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-top: 8px;
+  }
+  .tldr ol { margin: 8px 0 0; padding-left: 22px; }
+  .calc {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin: 16px 0;
+  }
+  .calc label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  .calc input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-size: 15px;
+  }
+  .calc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 800px) { .calc-grid { grid-template-columns: 1fr; } }
+  .metric {
+    background: var(--bad-bg);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-top: 12px;
+  }
+  .metric b { display: block; font-size: 22px; color: var(--bad); }
+  .metric.ok { background: var(--good-bg); }
+  .metric.ok b { color: var(--good); }
+  blockquote {
+    margin: 10px 0;
+    padding: 10px 16px;
+    background: #fff;
+    border-left: 4px solid var(--brand);
+    border-radius: 0 8px 8px 0;
+    font-size: 14.5px;
+  }
+  blockquote .src { display: block; margin-top: 6px; font-size: 12.5px; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Rate limit de <code>/deviceintegrity/initiate</code></h1>
+  <p>El hallazgo original proponía limitarlo por <code>deviceid</code> y <code>sessionappid</code> para que nadie llene Redis de challenges. Eso es necesario, pero no basta: esos dos valores los manda el cliente y un atacante los rota. Aquí van ejemplos de cómo se llena Redis y qué haríamos de verdad.</p>
+</header>
+<main>
+
+<section class="tldr">
+  <strong>Ojo, en una frase:</strong> limitar solo por headers del cliente es un límite que el atacante elige no cumplir. El challenge tiene que nacer de una sesión autenticada, vivir como <strong>una sola clave por sesión</strong> (se sobrescribe, no se acumula) y tener tres techos: sesión, IP y global. El servicio replica el límite, por si APIM no aplica.
+  <ol>
+    <li>No crear un UUID nuevo en Redis por cada <code>initiate</code>. La clave es <code>integrity:ch:{sessionId}</code>, con TTL de 120 s.</li>
+    <li>El <code>sessionId</code> sale del JWT validado, no del header <code>sessionappid</code>.</li>
+    <li>En APIM: 6 llamadas / 60 s por sesión, 30 / 60 s por IP, y un techo global. Respuesta 429.</li>
+    <li>En el servicio: el mismo contador en Redis, más <code>maxmemory</code> en la instancia de challenges.</li>
+  </ol>
+</section>
+
+<h2>1. Qué se guarda hoy</h2>
+<p>Tier 1 pide un challenge al servicio. El servicio genera un nonce, lo guarda en Redis 120 segundos, de un solo uso, y lo devuelve. Cada <code>initiate</code> que llega <strong>escribe</strong> en Redis. Si la clave es un UUID distinto cada vez, Redis crece con el tráfico, no con el número de usuarios.</p>
+<div class="card" data-diagram="fill">
+  <div class="card-head"><h4>Sin límite: un script llena Redis</h4><span class="tag bad">Vulnerable</span></div>
+  <div class="diagram"></div>
+</div>
+
+<div class="calc">
+  <strong>Ejemplo numérico.</strong> Cada challenge ocupa, con overhead de Redis, unos 800 bytes. TTL = 120 s. Memoria pico ≈ peticiones/s × 120 × 800 bytes.
+  <div class="calc-grid" style="margin-top:12px">
+    <div><label for="rps">Peticiones /initiate por segundo</label><input id="rps" type="number" min="1" value="2000"></div>
+    <div><label for="ttl">TTL (s)</label><input id="ttl" type="number" min="1" value="120"></div>
+    <div><label for="bytes">Bytes por clave</label><input id="bytes" type="number" min="100" value="800"></div>
+  </div>
+  <div class="metric" id="memOut"><b>—</b><span></span></div>
+  <p style="margin:10px 0 0;font-size:13.5px;color:var(--muted)">Con 2 000 peticiones/s durante 2 minutos, Redis llega a ~192 MB solo de challenges, y sigue igual de lleno mientras el ataque dure. Un bot más grande o varias réplicas del script lo multiplican. El daño no es solo memoria: CPU de Redis, conexiones, hilos del servicio y cuota de APIM.</p>
+</div>
+
+<h2>2. Por qué deviceid + sessionappid no cierran el ataque</h2>
+<p>Esos dos headers son parte de los headers comunes del documento. La app los envía. El servidor, si no los autentica, no puede saber si son reales. Un atacante que rote el par obtiene un contador nuevo en cada ráfaga.</p>
+<div class="card" data-diagram="rotate">
+  <div class="card-head"><h4>El atacante rota los headers y el límite por clave no dispara</h4><span class="tag bad">El matiz</span></div>
+  <div class="diagram"></div>
+</div>
+
+<table>
+  <thead><tr><th>Clave del rate limit</th><th>¿Quién la controla?</th><th>Qué hace el atacante</th><th>¿Sirve sola?</th></tr></thead>
+  <tbody>
+    <tr><td><code>deviceid</code> (header)</td><td>El cliente</td><td>Manda un UUID nuevo en cada petición</td><td class="deny">No</td></tr>
+    <tr><td><code>sessionappid</code> (header)</td><td>El cliente, si no se valida</td><td>Igual: un valor nuevo por petición</td><td class="deny">No</td></tr>
+    <tr><td>Par <code>deviceid|sessionappid</code></td><td>El cliente</td><td>Rota los dos a la vez</td><td class="deny">No</td></tr>
+    <tr><td>Header vacío</td><td>—</td><td>Si APIM usa <code>GetValueOrDefault(..., "")</code>, todos los vacíos comparten un contador. Si se permite el vacío, el ataque usa valores aleatorios, no el vacío.</td><td class="deny">No</td></tr>
+    <tr><td>Claim <code>sid</code> de un JWT validado</td><td>El servidor de sesión</td><td>Tiene que loguearse o robar sesiones. Mucho más caro.</td><td class="ok">Sí, como techo por sesión</td></tr>
+    <tr><td>IP de origen</td><td>Parcialmente el atacante (NAT, botnet, móvil)</td><td>Distribuye el ataque</td><td class="warn">Complemento, no techo único</td></tr>
+    <tr><td>Contador global del endpoint</td><td>Nadie lo elige</td><td>No se salta. Puede afectar a usuarios reales si el umbral es bajo.</td><td class="ok">Techo de emergencia</td></tr>
+  </tbody>
+</table>
+<div class="callout warn">
+  <strong>Dónde sí sirven deviceid y sessionappid</strong>
+  Sirven para métricas, para ligar el challenge a un dispositivo ya enrolado y para el rate limit <em>después</em> de autenticar. No sirven como única clave de un <code>rate-limit-by-key</code> leído del header.
+</div>
+
+<h2>3. Qué haríamos</h2>
+<div class="card" data-diagram="layers">
+  <div class="card-head"><h4>Tres techos, una clave por sesión</h4><span class="tag good">Propuesta</span></div>
+  <div class="diagram"></div>
+</div>
+
+<table>
+  <thead><tr><th>Capa</th><th>Regla sugerida</th><th>Si se pasa</th></tr></thead>
+  <tbody>
+    <tr><td>Autenticación</td><td><code>initiate</code> exige JWT de sesión. Sin token válido → 401. No se escribe Redis.</td><td>401</td></tr>
+    <tr><td>Una clave por sesión</td><td><code>SET integrity:ch:{sid} {nonce,…} EX 120</code>. Un segundo <code>initiate</code> de la misma sesión <strong>reemplaza</strong> el challenge anterior.</td><td>El challenge viejo deja de existir (TTL o overwrite)</td></tr>
+    <tr><td>APIM por sesión</td><td>6 llamadas / 60 s, clave = claim <code>sid</code></td><td>429</td></tr>
+    <tr><td>APIM por IP</td><td>30 llamadas / 60 s</td><td>429</td></tr>
+    <tr><td>APIM global</td><td>Por ejemplo 400 / 1 s en este operation (ajustar con el pico real)</td><td>429</td></tr>
+    <tr><td>Servicio</td><td>Los mismos números en Redis (<code>INCR</code> + <code>EXPIRE</code>), por si alguien llega al servicio sin pasar por esta política</td><td>429</td></tr>
+    <tr><td>Redis</td><td>Instancia o DB solo de challenges, <code>maxmemory</code> y política <code>volatile-ttl</code>. Alerta al 60 %.</td><td>Evicta challenges, no sesiones ni otros datos</td></tr>
+  </tbody>
+</table>
+<p>Los números 6 / 30 / 400 son un punto de partida. Un cliente legítimo pide un challenge por operación Tier 1, no por cada tap. Con 6 por minuto sobra para reintentos y no alcanza para un flood. Hay que validarlos con el pico medido en MONITOR.</p>
+<div class="card" data-diagram="overwrite">
+  <div class="card-head"><h4>La misma sesión no acumula challenges</h4><span class="tag good">Clave única</span></div>
+  <div class="diagram"></div>
+</div>
+<div class="callout good">
+  <strong>Por qué el overwrite importa más que el número 6</strong>
+  Aunque el rate limit falle o se evada un rato, Redis tiene como máximo <em>una clave por sesión viva</em>. El tamaño queda acotado por sesiones concurrentes (usuarios reales + sesiones robadas), no por peticiones por segundo. El flood de UUIDs deja de existir.
+</div>
+
+<h2>4. Ejemplos de implementación</h2>
+<h3>4.1 Política de APIM en <code>/deviceintegrity/initiate</code></h3>
+<blockquote>
+  <code>rate-limit-by-key</code> limita llamadas por una clave arbitraria durante un periodo de como máximo 300 segundos. Si se supera, APIM responde <code>429 Too Many Requests</code>.
+  <span class="src">Fuente: <a href="https://learn.microsoft.com/en-us/azure/api-management/rate-limit-by-key-policy" target="_blank">Azure API Management: rate-limit-by-key</a>. El Renewal máximo de 300 s obliga a usar <code>quota-by-key</code> si se quiere un techo diario.</span>
+</blockquote>
+<pre><code>&lt;policies&gt;
+  &lt;inbound&gt;
+    &lt;base /&gt;
+    &lt;!-- 1. Sesión autenticada. El sid no se lee del header. --&gt;
+    &lt;validate-jwt header-name="Authorization" failed-validation-httpcode="401"
+                  require-expiration-time="true" require-signed-tokens="true"&gt;
+      &lt;openid-config url="{{session-jwks-url}}" /&gt;
+      &lt;audiences&gt;&lt;audience&gt;{{session-audience}}&lt;/audience&gt;&lt;/audiences&gt;
+    &lt;/validate-jwt&gt;
+    &lt;set-variable name="sid"
+      value="@{
+        var jwt = context.Request.Headers.GetValueOrDefault(&quot;Authorization&quot;,&quot;&quot;).Split(' ').Last();
+        var p = jwt.Split('.')[1].PadRight(jwt.Split('.')[1].Length + (4 - jwt.Split('.')[1].Length % 4) % 4, '=');
+        var json = Encoding.UTF8.GetString(Convert.FromBase64String(p.Replace('-','+').Replace('_','/')));
+        return (String)((JObject)Newtonsoft.Json.JsonConvert.DeserializeObject(json))[&quot;sid&quot;];
+      }" /&gt;
+    &lt;choose&gt;
+      &lt;when condition="@(string.IsNullOrEmpty((string)context.Variables[&quot;sid&quot;]))"&gt;
+        &lt;return-response&gt;&lt;set-status code="401" reason="Unauthorized" /&gt;&lt;/return-response&gt;
+      &lt;/when&gt;
+    &lt;/choose&gt;
+
+    &lt;!-- 2. Techo por sesión --&gt;
+    &lt;rate-limit-by-key calls="6" renewal-period="60"
+        counter-key="@(&quot;init|sid|&quot; + (string)context.Variables[&quot;sid&quot;])"
+        retry-after-header-name="Retry-After" /&gt;
+    &lt;!-- 3. Techo por IP --&gt;
+    &lt;rate-limit-by-key calls="30" renewal-period="60"
+        counter-key="@(&quot;init|ip|&quot; + context.Request.IpAddress)" /&gt;
+    &lt;!-- 4. Techo global de este operation --&gt;
+    &lt;rate-limit-by-key calls="400" renewal-period="1"
+        counter-key="init|global" /&gt;
+  &lt;/inbound&gt;
+  &lt;backend&gt;&lt;base /&gt;&lt;/backend&gt;
+  &lt;outbound&gt;&lt;base /&gt;&lt;/outbound&gt;
+  &lt;on-error&gt;&lt;base /&gt;&lt;/on-error&gt;
+&lt;/policies&gt;</code></pre>
+<div class="callout warn">
+  <strong>Detalles de APIM que conviene no olvidar</strong>
+  El contador es por gateway y no es exacto al 100 % (lo dice Microsoft). En un APIM multi-región cada región cuenta aparte: el techo efectivo se multiplica. <code>increment-condition</code> con expresiones se evalúa al final del outbound y el 429 puede llegar una petición tarde; para este endpoint es mejor contar todas las llamadas, no solo las 200. Consumption tier no tiene <code>rate-limit-by-key</code>.
+</div>
+
+<h3>4.2 Servicio: overwrite + límite en Redis</h3>
+<pre><code>public Challenge initiate(Session s) {
+    if (s == null || s.sid == null) throw unauthorized();
+
+    String rl = "rl:init:" + s.sid;
+    Long n = redis.incr(rl);
+    if (n == 1) redis.expire(rl, 60);
+    if (n > 6) throw tooManyRequests(60);
+
+    String nonce = randomUrlSafe(32);                 // 32 bytes → cabe en Huawei (16–66) y en Play
+    String body = json(nonce, s.deviceId, s.sid, now());
+    redis.set("integrity:ch:" + s.sid, body, ex(120)); // overwrite: una clave, no un UUID nuevo
+    return new Challenge(s.sid, nonce, 120);
+}
+
+public Challenge consume(Session s, String presentedNonce) {
+    String raw = redis.getdel("integrity:ch:" + s.sid); // atómico, un solo uso
+    if (raw == null) throw deny("CHALLENGE_MISSING");
+    Challenge ch = parse(raw);
+    if (!constantTimeEquals(ch.nonce, presentedNonce)) throw deny("CHALLENGE_MISMATCH");
+    return ch;
+}</code></pre>
+
+<h3>4.3 Redis: acotar el daño</h3>
+<pre><code># instancia o DB 1 solo para challenges
+maxmemory 256mb
+maxmemory-policy volatile-ttl
+notify-keyspace-events Ex</code></pre>
+<p>256 MB, a 800 bytes por clave, son unas 300 000 sesiones con challenge vivo. Eso es un techo de incidentes, no de operación normal. La alerta de memoria al 60 % avisa antes de que Redis empiece a tirar claves.</p>
+
+<h2>5. Cómo se vería en números</h2>
+<table>
+  <thead><tr><th>Escenario</th><th>Sin defensa (UUID por petición)</th><th>Con overwrite + 6/min por sesión + IP</th></tr></thead>
+  <tbody>
+    <tr><td>Cliente real, 2 transferencias / minuto</td><td>2 claves</td><td class="ok">1 clave, 2 llamadas (ok)</td></tr>
+    <tr><td>Script, mismo <code>sid</code>, 2 000/s</td><td>Hasta 240 000 claves en 120 s</td><td class="ok">1 clave; a partir de la 7.ª en ese minuto, 429</td></tr>
+    <tr><td>Script, rota <code>deviceid</code> y <code>sessionappid</code> (headers)</td><td>240 000 claves</td><td class="ok">401 si no hay JWT. Si hay JWT, el <code>sid</code> no rota.</td></tr>
+    <tr><td>Botnet, 500 IPs, cada una con sesión robada o fake-login</td><td>Cientos de miles de claves</td><td class="warn">Hasta 500 claves (una por sesión) + 429 por IP a las 31. El techo global corta el resto.</td></tr>
+  </tbody>
+</table>
+
+<h2>6. Cómo probarlo</h2>
+<table>
+  <thead><tr><th>Prueba</th><th>Esperado</th></tr></thead>
+  <tbody>
+    <tr><td>7 <code>initiate</code> de la misma sesión en 10 s</td><td>6 × 200, después 429 con <code>Retry-After</code></td></tr>
+    <tr><td>Ráfaga con <code>deviceid</code> y <code>sessionappid</code> distintos, sin JWT</td><td>401, Redis no crece</td></tr>
+    <tr><td>Dos <code>initiate</code> de la misma sesión, luego un evaluate con el nonce del primero</td><td>El primero ya no está: DENY <code>CHALLENGE_MISSING</code> (overwrite)</td></tr>
+    <tr><td>Evaluate consume el nonce (GETDEL) y se reenvía</td><td>DENY, un solo uso</td></tr>
+    <tr><td>31 llamadas desde la misma IP, sesiones distintas</td><td>429 por IP</td></tr>
+    <tr><td>Medir <code>DBSIZE</code> / memoria durante un flood sintético</td><td>Claves ≈ sesiones concurrentes, no ≈ peticiones</td></tr>
+  </tbody>
+</table>
+
+<h2>7. Texto sugerido para el documento</h2>
+<div class="callout warn">
+  <strong>Para agregar junto al endpoint <code>/deviceintegrity/initiate</code> y a Redis</strong>
+  "El challenge se guarda en Redis bajo integrity:ch:{sid} con TTL 120 s y un solo uso (GETDEL). Un initiate de la misma sesión sobrescribe el challenge anterior: no se acumulan claves. sid sale del JWT de sesión, no de los headers deviceid ni sessionappid. APIM aplica rate-limit-by-key por sid (6/60 s), por IP (30/60 s) y un techo global en este operation; el servicio replica el límite por sid. La instancia de challenges tiene maxmemory y alerta de uso. deviceid y sessionappid como headers no se usan como única clave de rate limit."
+</div>
+
+</main>
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
+
+const D = {
+  fill: `sequenceDiagram
+    autonumber
+    participant ATK as Script
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    participant R as Redis
+    loop miles de veces
+      ATK->>APIM: POST /deviceintegrity/initiate
+      APIM->>INT: Sin rate limit
+      INT->>R: SET integrity:ch:UUID-nuevo EX 120
+      R-->>INT: OK
+      INT-->>ATK: nonce
+    end
+    Note over R: Cientos de miles de claves vivas 120 s`,
+
+  rotate: `sequenceDiagram
+    autonumber
+    participant ATK as Script
+    participant APIM as APIM
+    participant R as Redis
+    ATK->>APIM: initiate deviceid=A sessionappid=1
+    APIM->>APIM: contador A|1 = 1 de 6
+    APIM->>R: SET clave UUID-1
+    ATK->>APIM: initiate deviceid=B sessionappid=2
+    APIM->>APIM: contador B|2 = 1 de 6
+    APIM->>R: SET clave UUID-2
+    Note over ATK,R: Cada par nuevo reinicia el cupo. Redis sigue creciendo.`,
+
+  layers: `flowchart TD
+    A([POST /deviceintegrity/initiate]) --> B{JWT de sesión válido}
+    B -- No --> X1[401, no se escribe Redis]
+    B -- Sí --> C{6 por 60 s en este sid}
+    C -- No --> X2[429 Retry-After]
+    C -- Sí --> D{30 por 60 s en esta IP}
+    D -- No --> X2
+    D -- Sí --> E{techo global del operation}
+    E -- No --> X2
+    E -- Sí --> F[SET integrity:ch:sid EX 120 overwrite]
+    F --> G[Devuelve nonce]
+    classDef bad fill:#FDECEC,stroke:#B91C1C,color:#7F1D1D
+    classDef good fill:#E8F7EE,stroke:#15803D,color:#14532D
+    class X1,X2 bad
+    class F,G good`,
+
+  overwrite: `sequenceDiagram
+    autonumber
+    participant App as App con la misma sesión
+    participant INT as smp-device-integrity-service
+    participant R as Redis
+    App->>INT: initiate
+    INT->>R: SET integrity:ch:sid nonce=aaa EX 120
+    App->>INT: initiate otra vez
+    INT->>R: SET integrity:ch:sid nonce=bbb EX 120
+    Note over R: Sigue habiendo 1 clave. aaa desapareció.
+    App->>INT: evaluate con nonce aaa
+    INT->>R: GETDEL integrity:ch:sid
+    R-->>INT: nonce=bbb
+    INT-->>App: DENY CHALLENGE_MISMATCH`
+};
+
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  themeVariables: {
+    primaryColor: '#EEF2FF',
+    primaryBorderColor: '#001391',
+    primaryTextColor: '#001391',
+    lineColor: '#46536D',
+    actorBkg: '#EEF2FF',
+    actorBorder: '#001391',
+    actorTextColor: '#001391',
+    actorLineColor: '#9AA6C4',
+    signalColor: '#46536D',
+    signalTextColor: '#1F2937',
+    noteBkgColor: '#FFF4D6',
+    noteBorderColor: '#B7791F',
+    noteTextColor: '#1F2937',
+    labelBoxBkgColor: '#FFF4D6',
+    labelBoxBorderColor: '#B7791F',
+    loopTextColor: '#1F2937',
+    sequenceNumberColor: '#FFFFFF'
+  },
+  sequence: { mirrorActors: true, useMaxWidth: false, actorMargin: 30, messageMargin: 30 },
+  flowchart: { useMaxWidth: false, htmlLabels: false, curve: 'basis', wrappingWidth: 220 }
+});
+
+function fitSvg(svg) {
+  const pad = 12;
+  const bb = svg.getBBox();
+  const w = Math.ceil(bb.width + pad * 2);
+  const h = Math.ceil(bb.height + pad * 2);
+  svg.setAttribute('viewBox', `${bb.x - pad} ${bb.y - pad} ${w} ${h}`);
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  svg.style.maxWidth = '100%';
+  svg.style.height = 'auto';
+}
+
+function pngBlob(svg, scale = 2) {
+  const clone = svg.cloneNode(true);
+  const w = +svg.getAttribute('width');
+  const h = +svg.getAttribute('height');
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.style.maxWidth = '';
+  const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone));
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = w * scale;
+      c.height = h * scale;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0, w, h);
+      c.toBlob(b => (b ? resolve(b) : reject(new Error('PNG'))), 'image/png');
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+for (const card of document.querySelectorAll('[data-diagram]')) {
+  const key = card.dataset.diagram;
+  const target = card.querySelector('.diagram');
+  try {
+    const { svg } = await mermaid.render(`svg-${key}`, D[key]);
+    target.innerHTML = svg;
+    const el = target.querySelector('svg');
+    fitSvg(el);
+    const btn = document.createElement('button');
+    btn.textContent = 'Descargar PNG';
+    btn.onclick = async () => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(await pngBlob(el));
+      a.download = `RateLimit-Challenge-${key}.png`;
+      a.click();
+    };
+    card.querySelector('.card-head').appendChild(btn);
+  } catch (e) {
+    target.textContent = 'Error al renderizar: ' + (e.message || e);
+  }
+}
+
+function fmtBytes(n) {
+  if (n >= 1e9) return (n / 1e9).toFixed(2) + ' GB';
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + ' MB';
+  if (n >= 1e3) return (n / 1e3).toFixed(0) + ' KB';
+  return n + ' B';
+}
+function recalc() {
+  const rps = +document.getElementById('rps').value || 0;
+  const ttl = +document.getElementById('ttl').value || 0;
+  const bytes = +document.getElementById('bytes').value || 0;
+  const keys = rps * ttl;
+  const mem = keys * bytes;
+  const el = document.getElementById('memOut');
+  el.querySelector('b').textContent = fmtBytes(mem) + '  ·  ' + keys.toLocaleString('es-PE') + ' claves';
+  el.querySelector('span').textContent = 'Pico si el ataque se sostiene al menos un TTL. Con overwrite por sesión esto pasa a ser 1 clave por sid, no ' + keys.toLocaleString('es-PE') + '.';
+}
+['rps','ttl','bytes'].forEach(id => document.getElementById(id).addEventListener('input', recalc));
+recalc();
+</script>
+</body>
+</html>

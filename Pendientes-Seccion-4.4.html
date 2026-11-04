@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pendientes sección 4.4 — postura propuesta</title>
+<style>
+  :root {
+    --brand: #001391;
+    --ink: #1F2937;
+    --muted: #46536D;
+    --line: #D6DCEB;
+    --bg: #F5F7FC;
+    --bad: #B91C1C;
+    --bad-bg: #FDECEC;
+    --good: #15803D;
+    --good-bg: #E8F7EE;
+    --warn: #B7791F;
+    --warn-bg: #FFF8E6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.55;
+  }
+  header { background: var(--brand); color: #fff; padding: 28px 40px; }
+  header h1 { margin: 0 0 6px; font-size: 24px; }
+  header p { margin: 0; opacity: .88; max-width: 920px; }
+  header code { background: rgba(255,255,255,.15); color: #fff; }
+  main { max-width: 1200px; margin: 0 auto; padding: 24px 40px 60px; }
+  h2 { color: var(--brand); border-bottom: 2px solid var(--brand); padding-bottom: 6px; margin-top: 44px; }
+  h3 { margin: 26px 0 8px; }
+  p, li { font-size: 15px; }
+  code { background: #EEF2FF; padding: 1px 5px; border-radius: 4px; font-size: 13.5px; }
+  a { color: var(--brand); }
+  pre {
+    background: #0F172A;
+    color: #E2E8F0;
+    padding: 16px 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+  .callout {
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    border: 1px solid;
+    border-left-width: 5px;
+  }
+  .callout.bad { background: var(--bad-bg); border-color: #F5C2C2; border-left-color: var(--bad); }
+  .callout.good { background: var(--good-bg); border-color: #BDE5CB; border-left-color: var(--good); }
+  .callout.warn { background: var(--warn-bg); border-color: #F1D49A; border-left-color: var(--warn); }
+  .callout > strong:first-child { display: block; margin-bottom: 4px; }
+  .card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin: 16px 0 24px;
+    overflow: hidden;
+  }
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line);
+    background: #FAFBFE;
+    gap: 12px;
+  }
+  .card-head h4 { margin: 0; font-size: 14.5px; }
+  .tag { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+  .tag.bad { background: var(--bad-bg); color: var(--bad); }
+  .tag.good { background: var(--good-bg); color: var(--good); }
+  .tag.neutral { background: #EEF2FF; color: var(--brand); }
+  .card-head button {
+    border: 1px solid var(--brand);
+    background: #fff;
+    color: var(--brand);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .card-head button:hover { background: var(--brand); color: #fff; }
+  .diagram { padding: 16px; overflow-x: auto; text-align: center; }
+  .diagram svg { max-width: 100%; height: auto; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+  table { border-collapse: collapse; width: 100%; background: #fff; font-size: 14px; margin: 12px 0; }
+  th, td { border: 1px solid var(--line); padding: 9px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--brand); color: #fff; }
+  td.deny { background: var(--bad-bg); color: var(--bad); font-weight: 600; }
+  td.deg { background: var(--warn-bg); color: #7A4F0F; font-weight: 600; }
+  td.ok { background: var(--good-bg); color: var(--good); font-weight: 600; }
+  .tldr {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-left: 6px solid var(--brand);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-top: 8px;
+  }
+  .tldr ol { margin: 8px 0 0; padding-left: 22px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Pendientes de la sección 4.4: postura propuesta</h1>
+  <p>Cuatro políticas que el documento deja abiertas. Sin ellas, ENFORCE no se puede operar: no se sabe qué hacer si Google no responde, qué significa un Named Value vacío, qué hace el backend con <code>SKIPPED</code> ni quién puede apagar un switch.</p>
+</header>
+<main>
+
+<section class="tldr">
+  <strong>Las cuatro posturas, en corto.</strong>
+  <ol>
+    <li><strong>Caída:</strong> fail-closed en Tier 1 (DENY), DEGRADED en Tier 2. Timeouts explícitos en APIM y en el servicio.</li>
+    <li><strong>Switch de bypass:</strong> ausente o inválido significa <em>validar</em>, no apagar ni bloquear todo. Solo un <code>false</code> explícito salta la evaluación.</li>
+    <li><strong>SKIPPED:</strong> el backend procesa, registra el motivo y aplica controles compensatorios. Nunca lo trata como un ALLOW silencioso en operaciones críticas.</li>
+    <li><strong>Dueño del switch:</strong> AppSec opera, Riesgos aprueba, caduca solo (por ejemplo 2 h) si nadie lo renueva.</li>
+  </ol>
+</section>
+
+<table>
+  <thead><tr><th>Pendiente</th><th>Postura</th><th>Quién aprueba</th></tr></thead>
+  <tbody>
+    <tr><td>Caída del servicio o del proveedor</td><td>Tier 1 DENY, Tier 2 DEGRADED. Timeouts: APIM → servicio 800 ms; servicio → Google/Huawei 1,5 s. Un reintento corto. Cuota agotada = misma política.</td><td>Riesgos y AppSec</td></tr>
+    <tr><td>Named Value ausente o inválido</td><td>Se valida. No es “bloquear todo” ni “saltar todo”.</td><td>AppSec (regla de implementación)</td></tr>
+    <tr><td>Header <code>SKIPPED</code></td><td>Continuar + motivo + controles compensatorios. El backend no ejecuta lógica de “como si ALLOW”.</td><td>Producto, Riesgos y backends</td></tr>
+    <tr><td>Responsables del switch</td><td>Dueño AppSec, aprobación Riesgos, caducidad automática, bitácora.</td><td>Riesgos, AppSec y Operaciones</td></tr>
+  </tbody>
+</table>
+
+<h2>1. Caída: fail-closed en Tier 1, DEGRADED en Tier 2</h2>
+<p>Si el servicio no responde, si Google o Huawei no responden, o si se agota la cuota de Play Integrity, hay que decidir <em>antes</em> del incidente. Fail-open convierte una caída en un bypass: un atacante satura el servicio y opera sin integridad. Fail-closed en los dos tiers convierte una caída de Google en una caída de la app Personas.</p>
+<div class="grid2">
+  <div class="card" data-diagram="outage-open">
+    <div class="card-head"><h4>Fail-open: la caída es un bypass</h4><span class="tag bad">No</span></div>
+    <div class="diagram"></div>
+  </div>
+  <div class="card" data-diagram="outage-closed">
+    <div class="card-head"><h4>Postura: DENY / DEGRADED según el tier</h4><span class="tag good">Sí</span></div>
+    <div class="diagram"></div>
+  </div>
+</div>
+<table>
+  <thead><tr><th>Fallo</th><th>Tier 1</th><th>Tier 2</th><th>Motivo en el header</th></tr></thead>
+  <tbody>
+    <tr><td>Timeout o 5xx de <code>smp-device-integrity-service</code></td><td class="deny">DENY</td><td class="deg">DEGRADED</td><td><code>INTEGRITY_SERVICE_UNAVAILABLE</code></td></tr>
+    <tr><td>Timeout o 5xx de Google / Huawei / Apple</td><td class="deny">DENY</td><td class="deg">DEGRADED</td><td><code>PROVIDER_UNAVAILABLE</code></td></tr>
+    <tr><td>Cuota de Play Integrity agotada</td><td class="deny">DENY</td><td class="deg">DEGRADED</td><td><code>PROVIDER_QUOTA</code></td></tr>
+    <tr><td>Redis o Cosmos DB no disponibles</td><td class="deny">DENY</td><td class="deg">DEGRADED</td><td><code>INTEGRITY_STORE_UNAVAILABLE</code></td></tr>
+  </tbody>
+</table>
+<p><strong>Timeouts sugeridos</strong> (punto de partida, a medir en MONITOR):</p>
+<ul>
+  <li>APIM → servicio: <code>timeout="1"</code> en <code>send-request</code> (1 s; el objetivo es no pasar de ~800 ms de espera útil), <code>ignore-error="true"</code> para aplicar la política en lugar de devolver 500 de APIM.</li>
+  <li>Servicio → Google: 1 500 ms, un reintento. Servicio → Huawei: no hay llamada de red si se verifica el JWS en local (ver HTML de Huawei). Servicio → Apple (solo enrolamiento): 1 500 ms.</li>
+  <li>El tiempo total que ve el cliente no debería pasar de ~2 s en el camino de integridad. Si no, la app ya habrá mostrado error de red.</li>
+</ul>
+<div class="callout warn">
+  <strong>DEGRADED no es “dejar pasar”</strong>
+  El backend, al ver <code>DEGRADED</code>, acorta la sesión, baja montos, sube el peso del motor de fraude y registra el motivo. Si un backend ignora el header, DEGRADED se convierte en fail-open.
+</div>
+
+<h2>2. El bypass no se activa por un Named Value vacío</h2>
+<p>Hay dos “fail-closed” distintos y el documento los puede mezclar:</p>
+<table>
+  <thead><tr><th></th><th>Qué está cerrado</th><th>Si falla la config</th></tr></thead>
+  <tbody>
+    <tr><td>Caída del servicio (arriba)</td><td>La operación</td><td>Tier 1 se deniega</td></tr>
+    <tr><td>Switch de bypass <code>allowintegrityverify</code></td><td>La puerta para <em>no</em> validar</td><td>Se sigue validando</td></tr>
+  </tbody>
+</table>
+<p>Un Named Value ausente, en blanco, con un typo (<code>tru</code>, <code>FALSE </code> mal copiado, <code>0</code>) no puede significar “bloquear todo el canal” ni “saltar la integridad”. Lo segundo sería un fail-open accidental: alguien borra el Named Value y la app Personas queda sin validación. Lo primero sería una caída autoinfligida.</p>
+<div class="card" data-diagram="nv">
+  <div class="card-head"><h4>Solo un false explícito apaga la evaluación</h4><span class="tag good">Postura</span></div>
+  <div class="diagram"></div>
+</div>
+<pre><code>&lt;!-- APIM: el bypass solo existe como false escrito a propósito --&gt;
+&lt;set-variable name="integrityOff"
+  value="@(&quot;{{allowintegrityverify}}&quot;.Trim().ToLowerInvariant() == &quot;false&quot;)" /&gt;
+&lt;!-- igual para allowintegrityverifyandroid / huawei / ios --&gt;
+&lt;choose&gt;
+  &lt;when condition="@((bool)context.Variables[&quot;integrityOff&quot;])"&gt;
+    &lt;!-- SKIPPED SWITCH_OFF, con caducidad del switch (sección 4) --&gt;
+  &lt;/when&gt;
+  &lt;otherwise&gt;
+    &lt;!-- validar: true, vacío, ausente, "TRUE", "1", basura --&gt;
+  &lt;/otherwise&gt;
+&lt;/choose&gt;</code></pre>
+<div class="callout good">
+  <strong>Regla de una línea</strong>
+  <code>false</code> (minúsculas, recortado) = no validar. Cualquier otra cosa = validar.
+</div>
+
+<h2>3. Qué hace el backend con SKIPPED</h2>
+<p><code>SKIPPED</code> quiere decir “APIM no evaluó”, no “el dispositivo es íntegro”. Hoy el documento no dice qué hace el backend. Si lo trata como ALLOW, el switch de emergencia y la convivencia de versiones antiguas se convierten en un ALLOW silencioso.</p>
+<div class="card" data-diagram="skipped">
+  <div class="card-head"><h4>SKIPPED llega al backend con un motivo</h4><span class="tag good">Postura</span></div>
+  <div class="diagram"></div>
+</div>
+<table>
+  <thead><tr><th>Motivo (<code>X-Integrity-Reason</code>)</th><th>Cuándo</th><th>Qué hace el backend</th></tr></thead>
+  <tbody>
+    <tr><td><code>SWITCH_OFF</code></td><td>Kill switch global o de plataforma en <code>false</code></td><td>Procesa. Log + métrica + mismos controles compensatorios que DEGRADED en Tier 1 (monto, fraude). Alerta si dura más que la caducidad.</td></tr>
+    <tr><td><code>MONITOR</code></td><td>Modo MONITOR: se evaluó, no se bloquea</td><td>Procesa. Guarda la decisión hipotética para el umbral de ENFORCE.</td></tr>
+    <tr><td><code>LEGACY_CLIENT</code></td><td>Ventana de versiones antiguas</td><td>Procesa. Límites de monto más bajos en Tier 1. Ver HTML de versiones antiguas.</td></tr>
+    <tr><td><code>TIER3</code></td><td>Operación fuera de alcance</td><td>Procesa sin controles extra de integridad.</td></tr>
+    <tr><td>Ausente o desconocido</td><td>Bug o fragmento a medias</td><td class="deny">Tratar como UNVERIFIED / DENY en Tier 1. No es ALLOW.</td></tr>
+  </tbody>
+</table>
+<p>APIM siempre escribe <code>X-Integrity-Decision</code> y <code>X-Integrity-Reason</code> con <code>override</code>, y firma (ver HTML de spoofing). El backend verifica la firma. Sin firma, no hay SKIPPED de confianza.</p>
+
+<h2>4. Dueño del switch, aprobación y caducidad</h2>
+<p>Los Named Values <code>allowintegrityverify</code>, <code>…android</code>, <code>…huawei</code> y <code>…ios</code> apagan la evaluación. Sin dueño ni caducidad, un incidente de Huawei puede dejar el switch en <code>false</code> semanas.</p>
+<div class="card" data-diagram="switch">
+  <div class="card-head"><h4>Apagar un switch es un cambio con caducidad</h4><span class="tag good">Postura</span></div>
+  <div class="diagram"></div>
+</div>
+<table>
+  <thead><tr><th>Rol</th><th>Responsabilidad</th></tr></thead>
+  <tbody>
+    <tr><td>Dueño</td><td>AppSec. Único que cambia el Named Value en APIM (o vía pipeline).</td></tr>
+    <tr><td>Aprueba</td><td>Riesgos, por escrito o ticket, con el alcance (global o una plataforma) y el plazo.</td></tr>
+    <tr><td>Ejecuta</td><td>Operaciones / SRE, con AppSec en el puente.</td></tr>
+    <tr><td>Caducidad</td><td>Por defecto 2 horas. Un job o un Named Value <code>allowintegrityverify-until</code> (epoch) revierte a validar. Renovar exige un nuevo ticket.</td></tr>
+    <tr><td>Bitácora</td><td>Quién, cuándo, por qué, plataformas, hora de caducidad. Alerta a partir del minuto 1 en <code>false</code>.</td></tr>
+  </tbody>
+</table>
+<pre><code>&lt;!-- Caducidad: aunque el switch siga en false, si ya venció se valida --&gt;
+&lt;set-variable name="integrityOff" value="@{
+  var flag = &quot;{{allowintegrityverify}}&quot;.Trim().ToLowerInvariant() == &quot;false&quot;;
+  var untilRaw = &quot;{{allowintegrityverify-until}}&quot;;
+  long until;
+  if (!flag) return false;
+  if (!long.TryParse(untilRaw, out until)) return false; // sin caducidad válida, no se acepta el bypass
+  return DateTimeOffset.UtcNow.ToUnixTimeSeconds() &lt; until;
+}" /&gt;</code></pre>
+<div class="callout warn">
+  <strong>Sin timestamp de caducidad no hay bypass</strong>
+  Así un <code>false</code> olvidado no dura para siempre. El valor <code>allowintegrityverify-until</code> lo escribe el mismo cambio que pone el <code>false</code>.
+</div>
+
+<h2>5. Decisiones que debe firmar el negocio</h2>
+<table>
+  <thead><tr><th>Decisión</th><th>Propuesta</th><th>Quién</th></tr></thead>
+  <tbody>
+    <tr><td>Tier 1 ante caída de Google/Huawei/servicio</td><td>DENY</td><td>Riesgos</td></tr>
+    <tr><td>Tier 2 ante la misma caída</td><td>DEGRADED con límites concretos por operación</td><td>Producto y Riesgos</td></tr>
+    <tr><td>Timeouts</td><td>800 ms APIM→servicio, 1 500 ms servicio→proveedor</td><td>Arquitectura y SRE</td></tr>
+    <tr><td>Caducidad del switch</td><td>2 h, renovable</td><td>Riesgos y AppSec</td></tr>
+    <tr><td>Controles compensatorios de SKIPPED / DEGRADED</td><td>Monto, sesión, fraude</td><td>Fraude y Producto</td></tr>
+  </tbody>
+</table>
+
+<h2>6. Texto sugerido para la sección 4.4</h2>
+<div class="callout warn">
+  <strong>Políticas de contingencia</strong>
+  "Si smp-device-integrity-service, Redis, Cosmos DB o el proveedor no responden dentro del timeout (800 ms APIM→servicio, 1 500 ms servicio→proveedor), Tier 1 se deniega y Tier 2 se responde DEGRADED, con motivo INTEGRITY_SERVICE_UNAVAILABLE, PROVIDER_UNAVAILABLE, PROVIDER_QUOTA o INTEGRITY_STORE_UNAVAILABLE. La cuota agotada de Play Integrity se trata igual que una caída del proveedor. Los Named Values allowintegrityverify* solo desactivan la evaluación con el valor exacto false y un allowintegrityverify-until vigente; ausente, vacío o inválido implica validar. SKIPPED llega al backend con X-Integrity-Reason (SWITCH_OFF, MONITOR, LEGACY_CLIENT, TIER3) y firma; el backend procesa con controles compensatorios y no lo equivale a ALLOW. El switch lo opera AppSec con aprobación de Riesgos, bitácora y caducidad automática de 2 horas."
+</div>
+
+</main>
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
+
+const D = {
+  'outage-open': `sequenceDiagram
+    autonumber
+    participant ATK as Atacante
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    participant BE as Backend
+    ATK->>INT: Satura el servicio
+    ATK->>APIM: Transferencia Tier 1
+    APIM->>INT: Evalúa
+    INT--xAPIM: Timeout
+    APIM->>BE: SKIPPED o ALLOW
+    BE-->>ATK: 200 OK
+    Note over ATK,BE: Tirar el servicio equivale a apagar la integridad`,
+
+  'outage-closed': `sequenceDiagram
+    autonumber
+    participant App as App
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    participant BE as Backend
+    App->>APIM: Operación
+    APIM->>INT: Evalúa timeout 800 ms
+    INT--xAPIM: Timeout o 5xx
+    alt Tier 1
+      APIM-->>App: 403 DENY INTEGRITY_SERVICE_UNAVAILABLE
+    else Tier 2
+      APIM->>BE: DEGRADED + motivo
+      BE-->>App: 200 con restricciones
+    end`,
+
+  nv: `flowchart TD
+    A["Named Value allowintegrityverify"] --> B{¿Es exactamente false?}
+    B -- "false" --> C{¿Caducidad vigente?}
+    C -- Sí --> S[SKIPPED SWITCH_OFF]
+    C -- No o sin until --> V[Validar]
+    B -- "true, vacío, ausente, basura" --> V
+    V --> E[Llama a smp-device-integrity-service]
+    classDef good fill:#E8F7EE,stroke:#15803D,color:#14532D
+    classDef warn fill:#FFF4D6,stroke:#B7791F,color:#7A4F0F
+    class V,E good
+    class S warn`,
+
+  skipped: `sequenceDiagram
+    autonumber
+    participant APIM as APIM
+    participant BE as Backend de negocio
+    APIM->>APIM: No evaluó, motivo LEGACY_CLIENT
+    APIM->>BE: X-Integrity-Decision SKIPPED
+    APIM->>BE: X-Integrity-Reason LEGACY_CLIENT
+    APIM->>BE: X-Integrity-Signature
+    BE->>BE: Verifica firma
+    BE->>BE: Aplica límite de monto y fraude
+    BE-->>APIM: 200
+    Note over BE: Procesa, no celebra un ALLOW`,
+
+  switch: `sequenceDiagram
+    autonumber
+    actor Op as Operaciones
+    participant Risk as Riesgos
+    participant APIM as Named Values
+    participant Job as Job de caducidad
+    Op->>Risk: Pide apagar Huawei 2 h
+    Risk-->>Op: Aprueba
+    Op->>APIM: allowintegrityverifyhuawei = false, until = ahora+2h
+    Note over APIM: Bitácora + alerta
+    Job->>APIM: until vencido
+    APIM->>APIM: El bypass deja de aplicar, se valida`
+};
+
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  themeVariables: {
+    primaryColor: '#EEF2FF',
+    primaryBorderColor: '#001391',
+    primaryTextColor: '#001391',
+    lineColor: '#46536D',
+    actorBkg: '#EEF2FF',
+    actorBorder: '#001391',
+    actorTextColor: '#001391',
+    actorLineColor: '#9AA6C4',
+    signalColor: '#46536D',
+    signalTextColor: '#1F2937',
+    noteBkgColor: '#FFF4D6',
+    noteBorderColor: '#B7791F',
+    noteTextColor: '#1F2937',
+    labelBoxBkgColor: '#FFF4D6',
+    labelBoxBorderColor: '#B7791F',
+    loopTextColor: '#1F2937',
+    sequenceNumberColor: '#FFFFFF'
+  },
+  sequence: { mirrorActors: true, useMaxWidth: false, actorMargin: 26, messageMargin: 28 },
+  flowchart: { useMaxWidth: false, htmlLabels: false, curve: 'basis', wrappingWidth: 220 }
+});
+
+function fitSvg(svg) {
+  const pad = 12;
+  const bb = svg.getBBox();
+  const w = Math.ceil(bb.width + pad * 2);
+  const h = Math.ceil(bb.height + pad * 2);
+  svg.setAttribute('viewBox', `${bb.x - pad} ${bb.y - pad} ${w} ${h}`);
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  svg.style.maxWidth = '100%';
+  svg.style.height = 'auto';
+}
+
+function pngBlob(svg, scale = 2) {
+  const clone = svg.cloneNode(true);
+  const w = +svg.getAttribute('width');
+  const h = +svg.getAttribute('height');
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.style.maxWidth = '';
+  const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone));
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = w * scale;
+      c.height = h * scale;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0, w, h);
+      c.toBlob(b => (b ? resolve(b) : reject(new Error('PNG'))), 'image/png');
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+for (const card of document.querySelectorAll('[data-diagram]')) {
+  const key = card.dataset.diagram;
+  const target = card.querySelector('.diagram');
+  try {
+    const { svg } = await mermaid.render(`svg-${key.replace(/[^a-z0-9]/gi, '')}`, D[key]);
+    target.innerHTML = svg;
+    const el = target.querySelector('svg');
+    fitSvg(el);
+    const btn = document.createElement('button');
+    btn.textContent = 'Descargar PNG';
+    btn.onclick = async () => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(await pngBlob(el));
+      a.download = `Pendientes-4.4-${key}.png`;
+      a.click();
+    };
+    card.querySelector('.card-head').appendChild(btn);
+  } catch (e) {
+    target.textContent = 'Error al renderizar: ' + (e.message || e);
+  }
+}
+</script>
+</body>
+</html>

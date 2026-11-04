@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Huawei SysIntegrity: validación local del JWS — explicación</title>
+<style>
+  :root {
+    --brand: #001391;
+    --ink: #1F2937;
+    --muted: #46536D;
+    --line: #D6DCEB;
+    --bg: #F5F7FC;
+    --bad: #B91C1C;
+    --bad-bg: #FDECEC;
+    --good: #15803D;
+    --good-bg: #E8F7EE;
+    --warn: #B7791F;
+    --warn-bg: #FFF8E6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.55;
+  }
+  header { background: var(--brand); color: #fff; padding: 28px 40px; }
+  header h1 { margin: 0 0 6px; font-size: 24px; }
+  header p { margin: 0; opacity: .88; max-width: 920px; }
+  header code { background: rgba(255,255,255,.15); color: #fff; }
+  main { max-width: 1200px; margin: 0 auto; padding: 24px 40px 60px; }
+  h2 { color: var(--brand); border-bottom: 2px solid var(--brand); padding-bottom: 6px; margin-top: 44px; }
+  h3 { margin: 26px 0 8px; }
+  p, li { font-size: 15px; }
+  code { background: #EEF2FF; padding: 1px 5px; border-radius: 4px; font-size: 13.5px; }
+  a { color: var(--brand); }
+  pre {
+    background: #0F172A;
+    color: #E2E8F0;
+    padding: 16px 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+  .callout {
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    border: 1px solid;
+    border-left-width: 5px;
+  }
+  .callout.bad { background: var(--bad-bg); border-color: #F5C2C2; border-left-color: var(--bad); }
+  .callout.good { background: var(--good-bg); border-color: #BDE5CB; border-left-color: var(--good); }
+  .callout.warn { background: var(--warn-bg); border-color: #F1D49A; border-left-color: var(--warn); }
+  .callout > strong:first-child { display: block; margin-bottom: 4px; }
+  .card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin: 16px 0 24px;
+    overflow: hidden;
+  }
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line);
+    background: #FAFBFE;
+    gap: 12px;
+  }
+  .card-head h4 { margin: 0; font-size: 14.5px; }
+  .tag { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+  .tag.bad { background: var(--bad-bg); color: var(--bad); }
+  .tag.good { background: var(--good-bg); color: var(--good); }
+  .tag.neutral { background: #EEF2FF; color: var(--brand); }
+  .card-head button {
+    border: 1px solid var(--brand);
+    background: #fff;
+    color: var(--brand);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .card-head button:hover { background: var(--brand); color: #fff; }
+  .diagram { padding: 16px; overflow-x: auto; text-align: center; }
+  .diagram svg { max-width: 100%; height: auto; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+  table { border-collapse: collapse; width: 100%; background: #fff; font-size: 14px; margin: 12px 0; }
+  th, td { border: 1px solid var(--line); padding: 9px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--brand); color: #fff; }
+  td.ok { background: var(--good-bg); color: var(--good); font-weight: 600; }
+  td.warn { background: var(--warn-bg); color: #7A4F0F; font-weight: 600; }
+  td.deny { background: var(--bad-bg); color: var(--bad); font-weight: 600; }
+  .tldr {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-left: 6px solid var(--brand);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-top: 8px;
+  }
+  .tldr ol { margin: 8px 0 0; padding-left: 22px; }
+  blockquote {
+    margin: 10px 0;
+    padding: 10px 16px;
+    background: #fff;
+    border-left: 4px solid var(--brand);
+    border-radius: 0 8px 8px 0;
+    font-size: 14.5px;
+  }
+  blockquote .src { display: block; margin-top: 6px; font-size: 12.5px; color: var(--muted); }
+  .jws {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 16px;
+    white-space: pre;
+    overflow-x: auto;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Huawei SysIntegrity: validar el JWS en el banco, no llamar a Huawei</h1>
+  <p>La tabla comparativa del documento deja abierto si <code>smp-device-integrity-service</code> valida la firma en local o llama a una API de Huawei. El diagrama de despliegue ya dibuja la salida a Huawei. Huawei no tiene un descifrado remoto como Google: la verificación es local, con la cadena hasta la raíz CBG.</p>
+</header>
+<main>
+
+<section class="tldr">
+  <strong>Postura:</strong> el servicio verifica el JWS en local, como documenta Huawei. No hay que llamar a Huawei desde el banco para "descifrar" el token. La app sí habla con Huawei para <em>obtener</em> el JWS. El diagrama de despliegue no debería pintar una flecha del servicio a Huawei, salvo OCSP/CRL si se decide consultarlos.
+  <ol>
+    <li>Parsear header, payload y firma.</li>
+    <li>Validar la cadena <code>x5c</code> contra la raíz <strong>Huawei CBG Root CA</strong> (anclada, no el almacén del sistema).</li>
+    <li>Comprobar que el certificado hoja es de <code>sysintegrity.platform.hicloud.com</code> y que la cadena tiene tres niveles.</li>
+    <li>Verificar la firma, el nonce, la frescura, <code>apkPackageName</code> y <code>apkCertificateDigestSha256</code>.</li>
+    <li>Exigir <code>basicIntegrity = true</code>. Huawei <strong>no documenta</strong> <code>evaluationType</code>: esa diferencia con Play Integrity queda como riesgo aceptado.</li>
+  </ol>
+</section>
+
+<h2>1. Dos llamadas distintas, se están mezclando</h2>
+<p>Google Play Integrity <strong>solo</strong> se descifra en los servidores de Google. Huawei no funciona así. Hay dos saltos, y solo uno toca a Huawei:</p>
+<div class="grid2">
+  <div class="card" data-diagram="appHuawei">
+    <div class="card-head"><h4>La app obtiene el JWS (sí habla con Huawei)</h4><span class="tag neutral">Cliente</span></div>
+    <div class="diagram"></div>
+  </div>
+  <div class="card" data-diagram="bankLocal">
+    <div class="card-head"><h4>El banco verifica el JWS (no llama a Huawei)</h4><span class="tag good">Servidor</span></div>
+    <div class="diagram"></div>
+  </div>
+</div>
+<blockquote>
+  "HMS Core (APK) sends the check result to the Huawei server to verify the certificate, and returns the result to you through the SysIntegrityResp object" … "Parse the JWS-format result … Obtain the certificate chain from header and use the Huawei CBG Root CA certificate to verify it. Verify the domain name of the leaf certificate … The correct domain name is <code>sysintegrity.platform.hicloud.com</code>."
+  <span class="src">Fuente: <a href="https://developer.huawei.com/consumer/en/doc/Security-Guides/dysintegritydevelopment-0000001050156331" target="_blank">SysIntegrity API — Safety Detect</a>. La verificación en el servidor del integrador es local, con la raíz CBG.</span>
+</blockquote>
+<div class="callout bad">
+  <strong>Qué está mal en el documento hoy</strong>
+  La tabla comparativa deja las dos opciones abiertas. El diagrama de despliegue ya dibuja salida del servicio a Huawei, como si hubiera un <code>decodeIntegrityToken</code> de Huawei. Esa API no existe en Safety Detect. Si se deja la flecha, Operaciones va a pedir firewall, cuenta y cuota que no hacen falta, y el código puede terminar confiando en un endpoint que nadie puede implementar.
+</div>
+
+<h2>2. Qué hay que verificar en local</h2>
+<div class="card" data-diagram="steps">
+  <div class="card-head"><h4>Pasos de verificación del JWS</h4><span class="tag good">Huawei CBG</span></div>
+  <div class="diagram"></div>
+</div>
+
+<div class="jws">header (ejemplo de Huawei)
+{
+  "alg": "RS256",          // o PS256 si se pidió así al llamar a sysIntegrity
+  "x5c": ["hoja", "intermedia"]
+}
+
+payload (campos documentados)
+{
+  "nonce": "bSshKk0YTZrfOl5IjK7HcQ==",
+  "timestampMs": 1571708929141,
+  "apkPackageName": "pe.banco.app",
+  "apkDigestSha256": "…",
+  "apkCertificateDigestSha256": ["…digest de la firma de la app…"],
+  "appId": "…",
+  "basicIntegrity": true,
+  "advice": "RESTORE_TO_FACTORY_ROM",   // si basicIntegrity es false
+  "detail": ["root", "unlocked"]         // a veces, si es false
+}</div>
+<blockquote>
+  Header: <code>alg</code> (RS256 = SHA256withRSA) y <code>x5c</code> (cadena usada por el servidor de firma de Huawei). Payload: <code>nonce</code>, <code>timestampMs</code>, <code>apkPackageName</code>, <code>apkDigestSha256</code>, <code>apkCertificateDigestSha256</code>, <code>basicIntegrity</code>, <code>advice</code>.
+  <span class="src">Fuente: <a href="https://developer.huawei.com/consumer/en/doc/HMS-Plugin-References-V1/sysintegrityresp-0000001063109882-V1" target="_blank">SysIntegrityResp</a>. En guías más nuevas Huawei pide además cadena de <strong>tres</strong> certificados y raíz <strong>CBG Root CA G2</strong>, con dominio hoja <code>sysintegrity.platform.hicloud.com</code>.</span>
+</blockquote>
+
+<table>
+  <thead><tr><th>Comprobación</th><th>Qué rechaza</th><th>Obligatoria</th></tr></thead>
+  <tbody>
+    <tr><td>Cadena <code>x5c</code> hasta la raíz CBG anclada</td><td>JWS firmado con cualquier otra CA, incluida una CA que el sistema pudiera confiar</td><td class="ok">Sí</td></tr>
+    <tr><td>Tres niveles en la cadena</td><td>Cadena recortada o inventada</td><td class="ok">Sí (guía actual)</td></tr>
+    <tr><td>Hoja = <code>sysintegrity.platform.hicloud.com</code></td><td>Un certificado Huawei de otro servicio</td><td class="ok">Sí</td></tr>
+    <tr><td>Firma del JWS con la clave de la hoja</td><td>Payload manipulado</td><td class="ok">Sí</td></tr>
+    <tr><td><code>nonce</code> = el del challenge (Tier 1) o el recalculado (Tier 2)</td><td>Replay / transplante. Ver HTML de replay Huawei.</td><td class="ok">Sí</td></tr>
+    <tr><td><code>timestampMs</code> dentro de la ventana (por ejemplo 2 min)</td><td>JWS viejo</td><td class="ok">Sí</td></tr>
+    <tr><td><code>apkPackageName</code> = paquete de producción</td><td>Otra app, PoC, malware que llama a SysIntegrity</td><td class="ok">Sí</td></tr>
+    <tr><td><code>apkCertificateDigestSha256</code> = firma de Play/AppGallery de la app Personas</td><td>APK re-firmado</td><td class="ok">Sí</td></tr>
+    <tr><td><code>appId</code> = el de AppGallery Connect</td><td>JWS de otro proyecto Huawei</td><td class="ok">Sí, si viene en el payload</td></tr>
+    <tr><td><code>basicIntegrity = true</code></td><td>Root, unlock, emulador, ROM modificada</td><td class="ok">Sí en ENFORCE</td></tr>
+    <tr><td><code>evaluationType</code> con hardware</td><td>—</td><td class="deny">No existe en el payload documentado</td></tr>
+  </tbody>
+</table>
+
+<h2>3. basicIntegrity no es MEETS_DEVICE_INTEGRITY</h2>
+<p>Play Integrity, en este proyecto, exige <code>MEETS_DEVICE_INTEGRITY</code> y <code>PLAY_RECOGNIZED</code>. Huawei entrega un booleano. Huawei dice que la evaluación ocurre en el TEE durante el arranque seguro, pero <strong>el JWS no trae un flag</strong> equivalente a <code>HARDWARE_BACKED</code> / <code>evaluationType</code> (eso es de SafetyNet de Google, y el diagrama de secuencia del HTML de este proyecto lo llegó a nombrar por analogía).</p>
+<div class="card" data-diagram="compare">
+  <div class="card-head"><h4>Google descifra en Google; Huawei se verifica en el banco</h4><span class="tag neutral">Comparación</span></div>
+  <div class="diagram"></div>
+</div>
+<table>
+  <thead><tr><th></th><th>Play Integrity (Android GMS)</th><th>SysIntegrity (Huawei)</th></tr></thead>
+  <tbody>
+    <tr><td>¿Dónde se valida el token?</td><td>Solo en Google (<code>decodeIntegrityToken</code>)</td><td>En el banco, con la raíz CBG</td></tr>
+    <tr><td>Salida a Internet desde el servicio</td><td>Obligatoria, y consume cuota</td><td>No hace falta para verificar</td></tr>
+    <tr><td>Señal de dispositivo íntegro</td><td><code>MEETS_DEVICE_INTEGRITY</code></td><td><code>basicIntegrity: true</code></td></tr>
+    <tr><td>Señal de app reconocida</td><td><code>PLAY_RECOGNIZED</code></td><td><code>apkPackageName</code> + digest del certificado, comprobados por el banco</td></tr>
+    <tr><td>Flag de hardware</td><td>Implícito en los veredictos actuales</td><td>No viene en el JWS documentado</td></tr>
+    <tr><td>Fuerza relativa</td><td>Más rica</td><td class="warn">Más débil: un booleano, más fácil de discutir como riesgo aceptado</td></tr>
+  </tbody>
+</table>
+<div class="callout warn">
+  <strong>Riesgo aceptado (a firmar por Riesgos y AppSec)</strong>
+  "En Huawei, ENFORCE se basa en basicIntegrity = true más paquete, certificado, nonce y frescura. No hay un veredicto equivalente a MEETS_DEVICE_INTEGRITY ni un evaluationType documentado. Se acepta que la barra de Huawei es más baja que la de Google. No se usa checkSysIntegrityOnLocal (resultado sin JWS, solo cuando no hay servidor de Huawei): en banca no aplica."
+</div>
+
+<h2>4. Qué no haríamos</h2>
+<div class="card" data-diagram="wrong">
+  <div class="card-head"><h4>El servicio no llama a Huawei a descifrar</h4><span class="tag bad">A quitar del despliegue</span></div>
+  <div class="diagram"></div>
+</div>
+<ul>
+  <li><strong>No</strong> inventar un cliente HTTP a Safety Detect desde <code>smp-device-integrity-service</code>.</li>
+  <li><strong>No</strong> confiar en el almacén de CAs del sistema operativo: anclar el cer de Huawei CBG Root CA / G2 que publica Huawei, con proceso para rotarlo.</li>
+  <li><strong>No</strong> usar <code>checkSysIntegrityOnLocal</code> como fallback de ENFORCE: Huawei lo reserva a cuando no hay servidor suyo, y el resultado no viene firmado como JWS de SysIntegrity.</li>
+  <li><strong>Opcional:</strong> consultar OCSP/CRL de la cadena. Eso sí sería una salida a Internet, distinta de "la API de Huawei", y habría que dibujarla aparte si se adopta.</li>
+</ul>
+
+<h2>5. Ejemplo de verificación (Java, ilustrativo)</h2>
+<pre><code>Decision verifyHuawei(String jws, Expected exp, byte[] expectedNonce) {
+    SignedJWT jwt = SignedJWT.parse(jws);
+    List&lt;X509Certificate&gt; chain = parseX5c(jwt.getHeader().getX509CertChain());
+    if (chain.size() != 3) return deny("HUAWEI_CHAIN_LENGTH");
+
+    X509Certificate leaf = chain.get(0);
+    verifyChainAnchored(chain, pinnedCbgRoot);          // raíz CBG en el keystore de la app, no cacerts
+    if (!leafMatchesHostname(leaf, "sysintegrity.platform.hicloud.com"))
+        return deny("HUAWEI_LEAF_HOST");
+
+    if (!jwt.verify(new RSASSAVerifier((RSAPublicKey) leaf.getPublicKey()))
+        &amp;&amp; !jwt.verify(new RSASSAVerifier((RSAPublicKey) leaf.getPublicKey()) /* PS256 si alg=PS256 */))
+        return deny("HUAWEI_BAD_SIGNATURE");
+
+    JSONObject p = payload(jwt);
+    if (!constantTimeEquals(b64(expectedNonce), p.getString("nonce"))) return deny("HUAWEI_NONCE");
+    if (nowMs() - p.getLong("timestampMs") &gt; 120_000)                 return deny("HUAWEI_STALE");
+    if (!exp.packageName.equals(p.getString("apkPackageName")))       return deny("HUAWEI_PACKAGE");
+    if (!p.getJSONArray("apkCertificateDigestSha256").toList().contains(exp.certDigestB64))
+        return deny("HUAWEI_CERT_DIGEST");
+    if (p.has("appId") &amp;&amp; !exp.appId.equals(p.getString("appId")))    return deny("HUAWEI_APP_ID");
+    if (!p.getBoolean("basicIntegrity"))                              return deny("HUAWEI_BASIC_INTEGRITY");
+    return allow();
+}</code></pre>
+<p>El nonce de Tier 1 es el del challenge en Redis. El de Tier 2 se recalcula como en el HTML de replay: <code>SHA256(método | ruta | SHA256(cuerpo) | deviceid | timestamp)</code>, y se registra en Redis para no repetirlo.</p>
+
+<h2>6. Ajustes al documento</h2>
+<table>
+  <thead><tr><th>Dónde</th><th>Cambio</th></tr></thead>
+  <tbody>
+    <tr><td>Tabla comparativa de proveedores</td><td>Cerrar la fila: "Validación en el banco del JWS, cadena CBG, hoja sysintegrity.platform.hicloud.com. No hay API de descifrado."</td></tr>
+    <tr><td>Diagrama de despliegue</td><td>Quitar la flecha del servicio a Huawei. Dejar, si acaso, la del dispositivo a Huawei (HMS Core).</td></tr>
+    <tr><td>Diagrama de secuencia Huawei</td><td>El servicio no llama a Huawei. Valida en local. No mencionar evaluationType como campo obligatorio.</td></tr>
+    <tr><td>Riesgos aceptados</td><td>Registrar que basicIntegrity es más débil que MEETS_DEVICE_INTEGRITY.</td></tr>
+    <tr><td>Secretos / config</td><td>Raíz CBG anclada, package, digest del certificado de firma, appId. Proceso de rotación del cer.</td></tr>
+  </tbody>
+</table>
+<div class="callout warn">
+  <strong>Texto sugerido</strong>
+  "SysIntegrity se verifica en smp-device-integrity-service: cadena x5c anclada a Huawei CBG Root CA, hostname de la hoja sysintegrity.platform.hicloud.com, firma, nonce, timestamp, apkPackageName, apkCertificateDigestSha256 y basicIntegrity=true. El servicio no llama a Huawei. Se acepta que basicIntegrity no equivale a MEETS_DEVICE_INTEGRITY. checkSysIntegrityOnLocal no se usa en ENFORCE."
+</div>
+
+</main>
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
+
+const D = {
+  appHuawei: `sequenceDiagram
+    autonumber
+    participant App as App Huawei
+    participant HMS as HMS Core
+    participant HW as Servidor de firma Huawei
+    App->>HMS: sysIntegrity(nonce, appId)
+    HMS->>HW: Pide JWS firmado
+    HW-->>HMS: JWS
+    HMS-->>App: JWS
+    Note over App,HW: Esto ya ocurrió en el teléfono. El banco no participa.`,
+
+  bankLocal: `sequenceDiagram
+    autonumber
+    participant App as App Huawei
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    App->>APIM: X-TOKEN-INTEGRITY = JWS
+    APIM->>INT: Evalúa
+    INT->>INT: Verifica cadena CBG, hoja, firma, nonce, paquete, digest, basicIntegrity
+    Note over INT: Sin llamada de red a Huawei
+    INT-->>APIM: ALLOW o DENY`,
+
+  steps: `flowchart TD
+    A([JWS de SysIntegrity]) --> B[Separar header, payload, firma]
+    B --> C{Cadena x5c anclada a CBG Root CA}
+    C -- No --> X[DENY HUAWEI_CHAIN]
+    C -- Sí --> D{Hoja = sysintegrity.platform.hicloud.com y 3 niveles}
+    D -- No --> X2[DENY HUAWEI_LEAF_HOST]
+    D -- Sí --> E{Firma válida}
+    E -- No --> X3[DENY HUAWEI_BAD_SIGNATURE]
+    E -- Sí --> F{nonce, timestamp, paquete, digest, appId}
+    F -- No --> X4[DENY de payload]
+    F -- Sí --> G{basicIntegrity true}
+    G -- No --> X5[DENY HUAWEI_BASIC_INTEGRITY]
+    G -- Sí --> OK[ALLOW]
+    classDef bad fill:#FDECEC,stroke:#B91C1C,color:#7F1D1D
+    classDef good fill:#E8F7EE,stroke:#15803D,color:#14532D
+    class X,X2,X3,X4,X5 bad
+    class OK good`,
+
+  compare: `flowchart LR
+    subgraph G[Play Integrity]
+      A1[App pide token] --> A2[Servicio llama a Google decodeIntegrityToken]
+      A2 --> A3[Veredictos MEETS_DEVICE_INTEGRITY y PLAY_RECOGNIZED]
+    end
+    subgraph H[SysIntegrity]
+      B1[App pide JWS a Huawei] --> B2[Servicio verifica JWS en local]
+      B2 --> B3[basicIntegrity más paquete y certificado]
+    end`,
+
+  wrong: `sequenceDiagram
+    autonumber
+    participant INT as smp-device-integrity-service
+    participant HW as API de Huawei que no existe
+    INT->>HW: Desciframe este JWS
+    HW--xINT: No hay decodeIntegrityToken de Huawei
+    Note over INT,HW: Quitar esta flecha del diagrama de despliegue`
+};
+
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  themeVariables: {
+    primaryColor: '#EEF2FF',
+    primaryBorderColor: '#001391',
+    primaryTextColor: '#001391',
+    lineColor: '#46536D',
+    actorBkg: '#EEF2FF',
+    actorBorder: '#001391',
+    actorTextColor: '#001391',
+    actorLineColor: '#9AA6C4',
+    signalColor: '#46536D',
+    signalTextColor: '#1F2937',
+    noteBkgColor: '#FFF4D6',
+    noteBorderColor: '#B7791F',
+    noteTextColor: '#1F2937',
+    labelBoxBkgColor: '#FFF4D6',
+    labelBoxBorderColor: '#B7791F',
+    loopTextColor: '#1F2937',
+    sequenceNumberColor: '#FFFFFF'
+  },
+  sequence: { mirrorActors: true, useMaxWidth: false, actorMargin: 24, messageMargin: 28 },
+  flowchart: { useMaxWidth: false, htmlLabels: false, curve: 'basis', wrappingWidth: 200 }
+});
+
+function fitSvg(svg) {
+  const pad = 12;
+  const bb = svg.getBBox();
+  const w = Math.ceil(bb.width + pad * 2);
+  const h = Math.ceil(bb.height + pad * 2);
+  svg.setAttribute('viewBox', `${bb.x - pad} ${bb.y - pad} ${w} ${h}`);
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  svg.style.maxWidth = '100%';
+  svg.style.height = 'auto';
+}
+
+function pngBlob(svg, scale = 2) {
+  const clone = svg.cloneNode(true);
+  const w = +svg.getAttribute('width');
+  const h = +svg.getAttribute('height');
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.style.maxWidth = '';
+  const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone));
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = w * scale;
+      c.height = h * scale;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0, w, h);
+      c.toBlob(b => (b ? resolve(b) : reject(new Error('PNG'))), 'image/png');
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+for (const card of document.querySelectorAll('[data-diagram]')) {
+  const key = card.dataset.diagram;
+  const target = card.querySelector('.diagram');
+  try {
+    const { svg } = await mermaid.render(`svg-${key}`, D[key]);
+    target.innerHTML = svg;
+    const el = target.querySelector('svg');
+    fitSvg(el);
+    const btn = document.createElement('button');
+    btn.textContent = 'Descargar PNG';
+    btn.onclick = async () => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(await pngBlob(el));
+      a.download = `Huawei-JWS-${key}.png`;
+      a.click();
+    };
+    card.querySelector('.card-head').appendChild(btn);
+  } catch (e) {
+    target.textContent = 'Error al renderizar: ' + (e.message || e);
+  }
+}
+</script>
+</body>
+</html>

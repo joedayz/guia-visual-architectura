@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>iOS sin App Attest — qué haríamos</title>
+<style>
+  :root {
+    --brand: #001391;
+    --ink: #1F2937;
+    --muted: #46536D;
+    --line: #D6DCEB;
+    --bg: #F5F7FC;
+    --bad: #B91C1C;
+    --bad-bg: #FDECEC;
+    --good: #15803D;
+    --good-bg: #E8F7EE;
+    --warn: #B7791F;
+    --warn-bg: #FFF8E6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.55;
+  }
+  header { background: var(--brand); color: #fff; padding: 28px 40px; }
+  header h1 { margin: 0 0 6px; font-size: 24px; }
+  header p { margin: 0; opacity: .88; max-width: 900px; }
+  header code { background: rgba(255,255,255,.15); color: #fff; }
+  main { max-width: 1200px; margin: 0 auto; padding: 24px 40px 60px; }
+  h2 { color: var(--brand); border-bottom: 2px solid var(--brand); padding-bottom: 6px; margin-top: 44px; }
+  h3 { margin: 26px 0 8px; }
+  p, li { font-size: 15px; }
+  code { background: #EEF2FF; padding: 1px 5px; border-radius: 4px; font-size: 13.5px; }
+  a { color: var(--brand); }
+  pre {
+    background: #0F172A;
+    color: #E2E8F0;
+    padding: 16px 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+  .callout {
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    border: 1px solid;
+    border-left-width: 5px;
+  }
+  .callout.bad { background: var(--bad-bg); border-color: #F5C2C2; border-left-color: var(--bad); }
+  .callout.good { background: var(--good-bg); border-color: #BDE5CB; border-left-color: var(--good); }
+  .callout.warn { background: var(--warn-bg); border-color: #F1D49A; border-left-color: var(--warn); }
+  .callout > strong:first-child { display: block; margin-bottom: 4px; }
+  .card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin: 16px 0 24px;
+    overflow: hidden;
+  }
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line);
+    background: #FAFBFE;
+    gap: 12px;
+  }
+  .card-head h4 { margin: 0; font-size: 14.5px; }
+  .tag { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+  .tag.bad { background: var(--bad-bg); color: var(--bad); }
+  .tag.good { background: var(--good-bg); color: var(--good); }
+  .tag.neutral { background: #EEF2FF; color: var(--brand); }
+  .card-head button {
+    border: 1px solid var(--brand);
+    background: #fff;
+    color: var(--brand);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .card-head button:hover { background: var(--brand); color: #fff; }
+  .diagram { padding: 16px; overflow-x: auto; text-align: center; }
+  .diagram svg { max-width: 100%; height: auto; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+  table { border-collapse: collapse; width: 100%; background: #fff; font-size: 14px; margin: 12px 0; }
+  th, td { border: 1px solid var(--line); padding: 9px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--brand); color: #fff; }
+  td.deny { background: var(--bad-bg); color: var(--bad); font-weight: 600; }
+  td.deg { background: var(--warn-bg); color: #7A4F0F; font-weight: 600; }
+  td.ok { background: var(--good-bg); color: var(--good); font-weight: 600; }
+  blockquote {
+    margin: 10px 0;
+    padding: 10px 16px;
+    background: #fff;
+    border-left: 4px solid var(--brand);
+    border-radius: 0 8px 8px 0;
+    font-size: 14.5px;
+  }
+  blockquote .src { display: block; margin-top: 6px; font-size: 12.5px; color: var(--muted); }
+  .tldr {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-left: 6px solid var(--brand);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-top: 8px;
+  }
+  .tldr ol { margin: 8px 0 0; padding-left: 22px; }
+  .tldr li { margin: 4px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>iOS sin App Attest: qué haríamos</h1>
+  <p>Propuesta para el caso en que <code>DCAppAttestService.isSupported</code> devuelve <code>false</code> o App Attest falla, que el documento de <code>smp-device-integrity-service</code> todavía no define.</p>
+</header>
+
+<main>
+
+<section class="tldr">
+  <strong>Propuesta en una frase:</strong> "no soportado" lo declara el cliente, así que nunca debe significar "sin validación". El dispositivo pasa a postura <code>UNVERIFIED</code>, que bloquea Tier 1 y deja Tier 2 en modo DEGRADED. Además, reducimos al mínimo los casos legítimos para que cualquier volumen fuera de lo normal se vea como ataque.
+  <ol>
+    <li><strong>Eliminar los casos legítimos evitables:</strong> no publicar la app de iPhone en Macs con Apple silicon y no exponer operaciones protegidas desde extensiones.</li>
+    <li><strong>Distinguir tres situaciones:</strong> no soportado, falla temporal de Apple y clave inválida. Cada una tiene un tratamiento distinto.</li>
+    <li><strong>Evitar la degradación:</strong> un dispositivo que ya enroló App Attest no puede volver a declarar "no soportado".</li>
+    <li><strong>Postura <code>UNVERIFIED</code>:</strong> Tier 1 se deniega o exige un step-up aprobado, y Tier 2 queda en DEGRADED.</li>
+    <li><strong>Medir y alertar</strong> el porcentaje de peticiones iOS sin App Attest.</li>
+  </ol>
+</section>
+
+<h2>1. Cuándo App Attest no está disponible (según Apple)</h2>
+<blockquote>
+  "Not all device types support the App Attest service, so check for support before using the service. If you read <code>isSupported</code> from an app running on a Mac device, the value is <code>false</code>. This includes Mac Catalyst apps, and iOS or iPadOS apps running on Apple silicon."
+  <span class="src">Fuente: <a href="https://developer.apple.com/documentation/devicecheck/dcappattestservice/issupported" target="_blank">DCAppAttestService.isSupported</a></span>
+</blockquote>
+<blockquote>
+  "Most extensions don't support App Attest. The <code>generateKey</code> method fails when you call it from an app extension, regardless of the value of <code>isSupported</code>."
+  <span class="src">Fuente: misma página.</span>
+</blockquote>
+<blockquote>
+  "You change the behavior of both your app […] and your server — which can no longer require assertions — when you find that the device doesn't support the service."
+  <span class="src">Fuente: <a href="https://developer.apple.com/documentation/devicecheck/establishing-your-app-s-integrity" target="_blank">Establishing your app's integrity</a>. Apple deja la política en manos de quien integra, y eso es justo lo que falta definir.</span>
+</blockquote>
+
+<table>
+  <thead><tr><th>Situación</th><th>Señal en la app</th><th>¿Es evitable?</th><th>Qué haríamos</th></tr></thead>
+  <tbody>
+    <tr><td><strong>App de iPhone en Mac</strong> (Apple silicon) o Mac Catalyst</td><td><code>isSupported = false</code></td><td>Sí</td><td>Desactivar en App Store Connect la disponibilidad de la app de iPhone y iPad en Macs con Apple silicon. Así el caso desaparece.</td></tr>
+    <tr><td><strong>Extensiones</strong> (widgets, share, intents)</td><td><code>generateKey</code> falla</td><td>Sí</td><td>No ejecutar operaciones Tier 1 ni Tier 2 desde extensiones: deben abrir la app principal.</td></tr>
+    <tr><td><strong>Simulador</strong></td><td><code>isSupported = false</code></td><td>Sí, en producción</td><td>Solo existe en desarrollo y QA. En esos ambientes se permite una lista de dispositivos de prueba, nunca en producción.</td></tr>
+    <tr><td><strong>Falla temporal del servicio de Apple</strong></td><td>Error <code>serverUnavailable</code> al hacer <code>attestKey</code></td><td>No</td><td>Reintentar con backoff. Mientras tanto, postura <code>UNVERIFIED</code> temporal.</td></tr>
+    <tr><td><strong>Clave inválida</strong> (reinstalación, restauración de backup o cambio de iPhone)</td><td>Error <code>invalidKey</code>, o <code>keyId</code> desconocido para el servidor</td><td>No, es normal</td><td>Volver a enrolar con challenge nuevo. No es lo mismo que "no soportado".</td></tr>
+    <tr><td><strong>iPhone real que declara "no soportado"</strong></td><td><code>isSupported = false</code> en un iPhone</td><td>—</td><td>No debería ocurrir en un iPhone actual con iOS 14 o superior. Se trata como sospechoso: postura <code>UNVERIFIED</code> y alerta.</td></tr>
+  </tbody>
+</table>
+
+<h2>2. El riesgo: "no soportado" como bypass</h2>
+<p>El valor de <code>isSupported</code> lo lee la app en el dispositivo. El servidor solo se entera de lo que la app le <strong>dice</strong>, por ejemplo con un header <code>X-INTEGRITY-UNSUPPORTED: true</code> o simplemente sin enviar aserción. Un atacante con una app modificada, un jailbreak o un script puede declarar "no soportado" y ahorrarse App Attest. Es el mismo patrón de "elegir el control más débil" que vimos con <code>X-INTEGRITY-PLATFORM</code>.</p>
+<div class="card" data-diagram="attack">
+  <div class="card-head"><h4>Si "no soportado" significara "dejar pasar"</h4><span class="tag bad">Vulnerable</span></div>
+  <div class="diagram"></div>
+</div>
+<div class="callout bad">
+  <strong>Por eso la regla base</strong>
+  "No soportado" <strong>nunca</strong> equivale a ALLOW. Se trata como <strong>ausencia de evidencia</strong>, igual que un token que falta, y la decisión la toma la política por tier.
+</div>
+
+<h2>3. Qué haríamos: decisión por postura y por tier</h2>
+<div class="card" data-diagram="flow">
+  <div class="card-head"><h4>Cómo decide el servicio una petición iOS</h4><span class="tag neutral">Propuesta</span></div>
+  <div class="diagram"></div>
+</div>
+
+<table>
+  <thead><tr><th>Postura del dispositivo</th><th>Tier 1 (crítico)</th><th>Tier 2 (menor criticidad)</th><th>Tier 3</th></tr></thead>
+  <tbody>
+    <tr><td><strong>VERIFIED</strong>: App Attest enrolado y aserción válida</td><td class="ok">ALLOW</td><td class="ok">ALLOW</td><td>Sin validación</td></tr>
+    <tr><td><strong>UNVERIFIED temporal</strong>: falla de Apple (<code>serverUnavailable</code>) durante el enrolamiento</td><td class="deny">DENY, o step-up si se aprueba</td><td class="deg">DEGRADED</td><td>Sin validación</td></tr>
+    <tr><td><strong>UNVERIFIED</strong>: dispositivo nuevo que declara "no soportado"</td><td class="deny">DENY, o step-up si se aprueba</td><td class="deg">DEGRADED</td><td>Sin validación</td></tr>
+    <tr><td><strong>Degradación</strong>: dispositivo con App Attest ya enrolado que ahora declara "no soportado"</td><td class="deny">DENY y alerta</td><td class="deny">DENY y alerta</td><td>Sin validación</td></tr>
+    <tr><td><strong>Re-enrolamiento requerido</strong>: <code>invalidKey</code> o <code>keyId</code> desconocido</td><td class="deg">Enrolar de nuevo y reintentar</td><td class="deg">Enrolar de nuevo y reintentar</td><td>Sin validación</td></tr>
+  </tbody>
+</table>
+<p><strong>Step-up para Tier 1</strong> (opción a aprobar por Riesgos): si se decide no bloquear del todo, la operación crítica de un dispositivo <code>UNVERIFIED</code> exige un segundo factor reforzado (por ejemplo token o biometría con verificación en el servidor), límites de monto más bajos y monitoreo de fraude. Es una decisión de negocio, no técnica, y entra en las políticas de contingencia pendientes.</p>
+
+<h3>3.1 Evitar la degradación: "una vez enrolado, siempre enrolado"</h3>
+<p>Cuando un dispositivo enrola App Attest con éxito, queda registrado (<code>deviceid → ios, appAttest = true</code>, con el mismo registro de plataforma que vimos en la explicación de suplantación de plataforma). A partir de ahí:</p>
+<ul>
+  <li>Si ese <code>deviceid</code> o esa sesión llegan sin aserción, o declarando "no soportado", se responde <strong>DENY</strong>. Un iPhone no pierde el Secure Enclave.</li>
+  <li>Si la clave ya no sirve (<code>invalidKey</code>, por reinstalación o restauración), el camino es <strong>volver a enrolar</strong>, no degradar.</li>
+</ul>
+<div class="grid2">
+  <div class="card" data-diagram="downgrade">
+    <div class="card-head"><h4>Un dispositivo enrolado intenta declarar "no soportado"</h4><span class="tag good">Bloqueado</span></div>
+    <div class="diagram"></div>
+  </div>
+  <div class="card" data-diagram="reenroll">
+    <div class="card-head"><h4>Clave inválida tras reinstalación: se vuelve a enrolar</h4><span class="tag good">Recuperación</span></div>
+    <div class="diagram"></div>
+  </div>
+</div>
+
+<h3>3.2 Dispositivo nuevo que declara "no soportado"</h3>
+<div class="card" data-diagram="unsupported">
+  <div class="card-head"><h4>Primer uso sin App Attest: postura UNVERIFIED</h4><span class="tag neutral">Propuesta</span></div>
+  <div class="diagram"></div>
+</div>
+
+<h3>3.3 Falla temporal de Apple durante el enrolamiento</h3>
+<p>El enrolamiento (<code>attestKey</code>) sí llama a los servidores de Apple. Si fallan, la app reintenta con backoff (por ejemplo 3 intentos en minutos) y en el siguiente inicio. Mientras tanto, el dispositivo queda <code>UNVERIFIED</code> <strong>temporal</strong>, con la misma política de la tabla. Ese estado tiene un plazo máximo: si después de ese plazo el dispositivo sigue sin enrolar, se trata como el caso 3.2 y se alerta.</p>
+
+<h2>4. Medición y alertas</h2>
+<p>Una vez eliminados los casos evitables (Mac, extensiones y simulador), el volumen legítimo de iOS sin App Attest debería ser <strong>cercano a cero</strong>. Por eso la métrica es un buen detector:</p>
+<table>
+  <thead><tr><th>Métrica</th><th>Alerta sugerida</th><th>Qué indica</th></tr></thead>
+  <tbody>
+    <tr><td>% de peticiones iOS con postura <code>UNVERIFIED</code></td><td>Por encima de la línea base (por ejemplo, más de 0,5 %)</td><td>Posible ataque de degradación, o una nueva versión de la app con un error de integración</td></tr>
+    <tr><td>Intentos de degradación (dispositivo enrolado que declara "no soportado")</td><td>Cualquier valor mayor que 0</td><td>Manipulación casi segura</td></tr>
+    <tr><td>Errores <code>serverUnavailable</code> en el enrolamiento</td><td>Pico respecto de la línea base</td><td>Incidente de Apple. Revisar el estado del servicio antes de culpar a la app.</td></tr>
+    <tr><td>Re-enrolamientos por <code>deviceid</code> al día</td><td>Más de N por dispositivo</td><td>Abuso: generar claves sin parar para burlar los límites por <code>keyId</code></td></tr>
+  </tbody>
+</table>
+
+<h2>5. ¿Y DeviceCheck como alternativa?</h2>
+<p>DeviceCheck (<code>DCDevice.generateToken</code>) da otra señal de Apple, pero <strong>no prueba</strong> que la petición venga de la app legítima ni ata nada a la petición. Solo permite guardar 2 bits por dispositivo en Apple, que sirven por ejemplo para marcar un dispositivo como fraudulento. Puede complementar la postura <code>UNVERIFIED</code> como señal de fraude, pero <strong>no la convierte en VERIFIED</strong>.</p>
+
+<h2>6. Cambios en la app y en el servicio</h2>
+<h3>6.1 App (Swift, ilustrativo)</h3>
+<pre><code>enum AttestState { case enrolled(keyId: String), unsupported, retryLater, needsReenroll }
+
+func ensureAttestation() async -&gt; AttestState {
+    let service = DCAppAttestService.shared
+    guard service.isSupported else { return .unsupported }        // se informa al servidor, no se salta nada
+    if let keyId = keychain.keyId { return .enrolled(keyId: keyId) }
+    do {
+        let keyId = try await service.generateKey()
+        let challenge = try await api.initiate(purpose: .enroll)
+        let attestation = try await service.attestKey(keyId, clientDataHash: sha256(challenge.value))
+        try await api.enroll(keyId: keyId, attestation: attestation, challengeId: challenge.id)
+        keychain.keyId = keyId
+        return .enrolled(keyId: keyId)
+    } catch let e as DCError where e.code == .serverUnavailable {
+        return .retryLater                                          // backoff; UNVERIFIED temporal
+    } catch let e as DCError where e.code == .invalidKey {
+        keychain.keyId = nil
+        return .needsReenroll
+    } catch {
+        return .retryLater
+    }
+}
+// Las peticiones protegidas de un dispositivo sin aserción envían X-INTEGRITY-ATTEST-STATE (unsupported | retry_later)
+// para la métrica. El servidor nunca lo usa para conceder ALLOW.</code></pre>
+
+<h3>6.2 Servicio (pseudocódigo)</h3>
+<pre><code>Decision evaluateIos(Req r, Tier tier) {
+    DeviceRecord dev = registry.find(r.deviceId);
+
+    if (r.assertion == null) {                                       // sin evidencia: "no soportado" o falla
+        if (dev != null &amp;&amp; dev.appAttestEnrolled)  return alert(deny("ATTEST_DOWNGRADE"));
+        metrics.unverified(r.attestState);
+        return tier == TIER_1 ? policy.tier1Unverified()            // DENY o STEP_UP según política aprobada
+                              : degraded("POSTURE_UNVERIFIED");
+    }
+    if (!keys.exists(r.keyId))                     return deny("REENROLL_REQUIRED");  // la app vuelve a enrolar
+    return verifyAssertion(r, tier);                                 // flujo normal (hash, firma, counter con ETag)
+}</code></pre>
+
+<h2>7. Decisiones que debe aprobar el negocio</h2>
+<table>
+  <thead><tr><th>Decisión</th><th>Propuesta técnica</th><th>Quién aprueba</th></tr></thead>
+  <tbody>
+    <tr><td>Tier 1 con postura <code>UNVERIFIED</code></td><td>DENY por defecto. Step-up solo si Riesgos lo aprueba, con límites de monto.</td><td>Riesgos y AppSec</td></tr>
+    <tr><td>Tier 2 con postura <code>UNVERIFIED</code></td><td>DEGRADED: sesión corta y restricciones definidas por operación.</td><td>Producto y Riesgos</td></tr>
+    <tr><td>Disponibilidad de la app en Macs con Apple silicon</td><td>Desactivarla en App Store Connect.</td><td>Producto y equipo móvil</td></tr>
+    <tr><td>Operaciones desde extensiones</td><td>Ninguna operación protegida desde extensiones.</td><td>Equipo móvil</td></tr>
+    <tr><td>Plazo máximo de <code>UNVERIFIED</code> temporal</td><td>Por ejemplo 24 h. Después se trata como no soportado y se alerta.</td><td>AppSec y Operaciones</td></tr>
+    <tr><td>Umbral de alerta de <code>UNVERIFIED</code></td><td>Línea base medida en MONITOR, más un margen.</td><td>Operaciones y SRE</td></tr>
+  </tbody>
+</table>
+
+<h2>8. Texto sugerido para el documento</h2>
+<div class="callout warn">
+  <strong>Para agregar en la sección 2.3 (Apple App Attest) y en la tabla 4.1</strong>
+  "Si App Attest no está disponible (<code>isSupported = false</code>, error del servicio de Apple o extensión), el dispositivo queda con postura UNVERIFIED: Tier 1 se deniega (o pasa a step-up si se aprueba) y Tier 2 se responde como DEGRADED. Un dispositivo que ya enroló App Attest no puede volver a operar sin aserción: se deniega como intento de degradación. Ante <code>invalidKey</code> o un <code>keyId</code> desconocido se vuelve a enrolar. La app no se publica para Macs con Apple silicon y no ejecuta operaciones protegidas desde extensiones. Se monitorea el porcentaje de peticiones iOS UNVERIFIED."
+</div>
+
+</main>
+
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
+
+const D = {
+  attack: `sequenceDiagram
+    autonumber
+    participant ATK as App modificada o script
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    participant BE as Backend de negocio
+    ATK->>ATK: Fuerza isSupported = false
+    ATK->>APIM: Operación sin assertion + estado unsupported
+    APIM->>INT: Evalúa
+    INT->>INT: No soportado, se omite App Attest
+    INT-->>APIM: ALLOW
+    APIM->>BE: Operación + X-Integrity-Decision ALLOW
+    Note over ATK,BE: El atacante se salta App Attest con solo declararlo`,
+
+  flow: `flowchart TD
+    A([Petición iOS protegida]) --> B{Trae assertion}
+    B -- Sí --> C{keyId enrolado}
+    C -- No --> R[REENROLL_REQUIRED, la app vuelve a enrolar]
+    C -- Sí --> V[Validación normal: hash, firma, counter con ETag]
+    B -- No --> D{El deviceid ya tenía App Attest enrolado}
+    D -- Sí --> X1[DENY ATTEST_DOWNGRADE + alerta]
+    D -- No --> U[Postura UNVERIFIED + métrica]
+    U --> T{Tier}
+    T -- Tier 1 --> X2[DENY o step-up aprobado]
+    T -- Tier 2 --> G[DEGRADED: sesión corta y restricciones]
+    classDef bad fill:#FDECEC,stroke:#B91C1C,color:#7F1D1D
+    classDef good fill:#E8F7EE,stroke:#15803D,color:#14532D
+    classDef warn fill:#FFF4D6,stroke:#B7791F,color:#7A4F0F
+    class X1,X2 bad
+    class V good
+    class U,G,R warn`,
+
+  downgrade: `sequenceDiagram
+    autonumber
+    participant ATK as iPhone enrolado manipulado
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    participant REG as Registro de dispositivos
+    ATK->>APIM: Operación sin assertion, unsupported
+    APIM->>INT: Evalúa
+    INT->>REG: Busca deviceid
+    REG-->>INT: ios, appAttest enrolado
+    INT-->>APIM: DENY ATTEST_DOWNGRADE
+    APIM-->>ATK: 403 Forbidden
+    Note over INT: Alerta de manipulación`,
+
+  reenroll: `sequenceDiagram
+    autonumber
+    participant App as App iOS reinstalada
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    App->>APIM: Operación + assertion con keyId viejo
+    APIM->>INT: Evalúa
+    INT->>INT: keyId desconocido o invalidKey
+    INT-->>APIM: REENROLL_REQUIRED
+    APIM-->>App: 403 con código de re-enrolamiento
+    App->>App: generateKey + attestKey con challenge nuevo
+    App->>APIM: Enrolamiento
+    APIM-->>App: Enrolado
+    App->>APIM: Reintenta la operación con assertion nueva`,
+
+  unsupported: `sequenceDiagram
+    autonumber
+    participant App as App iOS
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    participant REG as Registro de dispositivos
+    participant BE as Backend de negocio
+    App->>App: isSupported = false
+    App->>APIM: Operación Tier 2 sin assertion, estado unsupported
+    APIM->>INT: Evalúa
+    INT->>REG: Busca deviceid
+    REG-->>INT: Sin App Attest previo
+    INT->>INT: Postura UNVERIFIED, registra métrica
+    INT-->>APIM: DEGRADED
+    APIM->>BE: Operación + X-Integrity-Decision DEGRADED
+    BE-->>App: Respuesta con restricciones
+    App->>APIM: Operación Tier 1 sin assertion
+    APIM->>INT: Evalúa
+    INT-->>APIM: DENY (o step-up si se aprueba)
+    APIM-->>App: 403 Forbidden`
+};
+
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  themeVariables: {
+    primaryColor: '#EEF2FF',
+    primaryBorderColor: '#001391',
+    primaryTextColor: '#001391',
+    lineColor: '#46536D',
+    actorBkg: '#EEF2FF',
+    actorBorder: '#001391',
+    actorTextColor: '#001391',
+    actorLineColor: '#9AA6C4',
+    signalColor: '#46536D',
+    signalTextColor: '#1F2937',
+    noteBkgColor: '#FFF4D6',
+    noteBorderColor: '#B7791F',
+    noteTextColor: '#1F2937',
+    labelBoxBkgColor: '#FFF4D6',
+    labelBoxBorderColor: '#B7791F',
+    loopTextColor: '#1F2937',
+    sequenceNumberColor: '#FFFFFF'
+  },
+  sequence: { mirrorActors: true, useMaxWidth: false, actorMargin: 30, messageMargin: 30 },
+  flowchart: { useMaxWidth: false, htmlLabels: false, curve: 'basis' }
+});
+
+function fitSvg(svg) {
+  const pad = 12;
+  const bb = svg.getBBox();
+  const w = Math.ceil(bb.width + pad * 2);
+  const h = Math.ceil(bb.height + pad * 2);
+  svg.setAttribute('viewBox', `${bb.x - pad} ${bb.y - pad} ${w} ${h}`);
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  svg.style.maxWidth = '100%';
+  svg.style.height = 'auto';
+}
+
+function pngBlob(svg, scale = 2) {
+  const clone = svg.cloneNode(true);
+  const w = +svg.getAttribute('width');
+  const h = +svg.getAttribute('height');
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.style.maxWidth = '';
+  const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone));
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = w * scale;
+      c.height = h * scale;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0, w, h);
+      c.toBlob(b => (b ? resolve(b) : reject(new Error('PNG'))), 'image/png');
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+for (const card of document.querySelectorAll('[data-diagram]')) {
+  const key = card.dataset.diagram;
+  const target = card.querySelector('.diagram');
+  try {
+    const { svg } = await mermaid.render(`svg-${key}`, D[key]);
+    target.innerHTML = svg;
+    const el = target.querySelector('svg');
+    fitSvg(el);
+    const btn = document.createElement('button');
+    btn.textContent = 'Descargar PNG';
+    btn.onclick = async () => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(await pngBlob(el));
+      a.download = `iOS-SinAppAttest-${key}.png`;
+      a.click();
+    };
+    card.querySelector('.card-head').appendChild(btn);
+  } catch (e) {
+    target.textContent = 'Error al renderizar: ' + (e.message || e);
+  }
+}
+</script>
+</body>
+</html>

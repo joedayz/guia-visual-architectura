@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Falsificación de X-Integrity-Decision — explicación</title>
+<style>
+  :root {
+    --brand: #001391;
+    --ink: #1F2937;
+    --muted: #46536D;
+    --line: #D6DCEB;
+    --bg: #F5F7FC;
+    --bad: #B91C1C;
+    --bad-bg: #FDECEC;
+    --good: #15803D;
+    --good-bg: #E8F7EE;
+    --warn: #B7791F;
+    --warn-bg: #FFF8E6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.55;
+  }
+  header { background: var(--brand); color: #fff; padding: 28px 40px; }
+  header h1 { margin: 0 0 6px; font-size: 24px; }
+  header p { margin: 0; opacity: .88; max-width: 900px; }
+  main { max-width: 1200px; margin: 0 auto; padding: 24px 40px 60px; }
+  h2 { color: var(--brand); border-bottom: 2px solid var(--brand); padding-bottom: 6px; margin-top: 44px; }
+  h3 { margin: 26px 0 8px; }
+  p, li { font-size: 15px; }
+  code { background: #EEF2FF; padding: 1px 5px; border-radius: 4px; font-size: 13.5px; }
+  pre {
+    background: #0F172A;
+    color: #E2E8F0;
+    padding: 16px 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+  .callout {
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    border: 1px solid;
+    border-left-width: 5px;
+  }
+  .callout.bad { background: var(--bad-bg); border-color: #F5C2C2; border-left-color: var(--bad); }
+  .callout.good { background: var(--good-bg); border-color: #BDE5CB; border-left-color: var(--good); }
+  .callout.warn { background: var(--warn-bg); border-color: #F1D49A; border-left-color: var(--warn); }
+  .callout > strong:first-child { display: block; margin-bottom: 4px; }
+  .card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin: 16px 0 24px;
+    overflow: hidden;
+  }
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line);
+    background: #FAFBFE;
+    gap: 12px;
+  }
+  .card-head h4 { margin: 0; font-size: 14.5px; }
+  .tag { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+  .tag.bad { background: var(--bad-bg); color: var(--bad); }
+  .tag.good { background: var(--good-bg); color: var(--good); }
+  .tag.neutral { background: #EEF2FF; color: var(--brand); }
+  .card-head button {
+    border: 1px solid var(--brand);
+    background: #fff;
+    color: var(--brand);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .card-head button:hover { background: var(--brand); color: #fff; }
+  .diagram { padding: 16px; overflow-x: auto; text-align: center; }
+  .diagram svg { max-width: 100%; height: auto; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+  table { border-collapse: collapse; width: 100%; background: #fff; font-size: 14px; margin: 12px 0; }
+  th, td { border: 1px solid var(--line); padding: 9px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--brand); color: #fff; }
+  .request-box {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 16px;
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .request-box .hl { background: #FDE2E2; color: var(--bad); font-weight: 700; }
+  .tldr {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-top: 8px;
+  }
+  .tldr ol { margin: 8px 0 0; padding-left: 22px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>¿Cómo se falsifica <code style="background:rgba(255,255,255,.15);color:#fff">X-Integrity-Decision</code> y cómo se evita?</h1>
+  <p>Explicación del riesgo en la propuesta de <code style="background:rgba(255,255,255,.15);color:#fff">smp-device-integrity-service</code>: el backend de negocio confía en un header que también puede escribir el cliente.</p>
+</header>
+
+<main>
+
+<section class="tldr">
+  <strong>En una frase:</strong> el backend de negocio decide si atiende una operación leyendo el header <code>X-Integrity-Decision</code>. Un header HTTP lo puede escribir cualquiera que haga la petición. Si ese valor puede llegar al backend sin que lo haya puesto APIM, el control de integridad deja de existir.
+  <ol>
+    <li><strong>Ataque 1, inyección por APIM:</strong> el atacante manda el header desde su propio cliente y APIM lo deja pasar en alguna ruta.</li>
+    <li><strong>Ataque 2, bypass de APIM:</strong> el atacante llega al backend sin pasar por APIM y le manda el header directamente. Como el backend está en la red interna, esto solo es posible desde dentro.</li>
+  </ol>
+  El <strong>Ataque 1 es el riesgo principal</strong>: usa el camino legítimo a través de APIM, así que la red interna no lo frena.
+  Las dos condiciones del hallazgo cierran cada ataque: <strong>APIM borra el header entrante</strong> (cierra el 1) y <strong>el backend solo acepta tráfico autenticado de APIM</strong> (cierra el 2).
+</section>
+
+<h2>1. Flujo correcto (lo que el diseño espera)</h2>
+<p>La app manda la evidencia de integridad (token, JWS o assertion). APIM se la pasa a <code>smp-device-integrity-service</code>, recibe la decisión y la escribe en <code>X-Integrity-Decision</code>. El backend lee ese header para saber si procesa, restringe o rechaza.</p>
+<div class="card" data-diagram="normal">
+  <div class="card-head"><h4>Flujo esperado</h4><span class="tag neutral">Referencia</span></div>
+  <div class="diagram"></div>
+</div>
+<div class="callout warn">
+  <strong>El supuesto escondido</strong>
+  El backend da por hecho que <em>todo</em> <code>X-Integrity-Decision</code> que recibe lo escribió APIM. Nada en el diseño original garantiza ese supuesto, y los dos ataques se apoyan justamente en eso.
+</div>
+
+<h2>2. Ataque 1: el cliente inyecta el header y APIM lo deja pasar</h2>
+<p>Por defecto, APIM <strong>reenvía al backend todos los headers</strong> que recibe del cliente. Solo cambia los que una policy toca explícitamente. Así que basta con que exista <em>una</em> ruta en la que la policy no sobrescriba el header.</p>
+
+<h3>2.1 Qué manda el atacante</h3>
+<p>El atacante no necesita la app. Le basta con un proxy (Burp, mitmproxy) sobre un dispositivo rooteado, o directamente <code>curl</code> con un token de sesión válido:</p>
+<div class="request-box">POST /transfers/execute HTTP/1.1
+Host: api.ibk.example
+Authorization: Bearer eyJhbGciOi...   <span style="color:#46536D">(sesión válida del atacante)</span>
+consumerid: app-personas
+deviceid: 3f9c...
+X-INTEGRITY-PLATFORM: android
+X-TOKEN-INTEGRITY: basura
+<span class="hl">X-Integrity-Decision: ALLOW</span>
+
+{"destination_account":"...","amount":"5000.00","currency":"PEN"}</div>
+
+<h3>2.2 ¿En qué rutas deja pasar APIM el header?</h3>
+<p>Si en el camino normal se escribe el header con <code>exists-action="override"</code>, el valor del atacante se pisa. El problema aparece en todas las rutas donde APIM <strong>no llega a escribirlo</strong>:</p>
+<table>
+  <thead><tr><th>Ruta en APIM</th><th>Por qué el header del atacante llega al backend</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Operaciones Tier 3</strong></td><td>No llevan el policy fragment de integridad. APIM reenvía los headers tal cual. Si el backend que atiende Tier 3 comparte librería o filtro con Tier 1 y Tier 2, puede leer el <code>ALLOW</code> del atacante.</td></tr>
+    <tr><td><strong>Operación nueva sin fragment</strong></td><td>Alguien publica un endpoint y olvida incluir el fragment. El backend sí espera el header, y lo recibe del cliente.</td></tr>
+    <tr><td><strong>Kill switch en <code>false</code></strong></td><td>Si la rama de emergencia no sobrescribe con <code>SKIPPED</code> (por ejemplo, porque solo hace <code>&lt;return-response&gt;</code> o <code>&lt;forward-request&gt;</code>), pasa el valor del cliente.</td></tr>
+    <tr><td><strong>Fail-open por timeout</strong></td><td>Si el servicio de integridad no responde y la rama fail-open reenvía sin escribir el header, el atacante elige la decisión. Además, puede provocar el timeout a propósito.</td></tr>
+    <tr><td><strong><code>exists-action="append"</code></strong></td><td>El backend recibe <code>ALLOW, DENY</code> o dos headers. Muchos frameworks devuelven el <em>primer</em> valor, que es el del atacante.</td></tr>
+    <tr><td><strong>Variantes de nombre</strong></td><td>APIM trata los nombres sin distinguir mayúsculas, pero un proxy o WAF intermedio puede no hacerlo. Por ejemplo, <code>x-integrity-decision</code> o <code>X_Integrity_Decision</code> (algunos servidores convierten <code>_</code> en <code>-</code>).</td></tr>
+  </tbody>
+</table>
+
+<div class="grid2">
+  <div class="card" data-diagram="attack1-bad">
+    <div class="card-head"><h4>Sin protección: Tier 3, operación sin fragment o fail-open</h4><span class="tag bad">Vulnerable</span></div>
+    <div class="diagram"></div>
+  </div>
+  <div class="card" data-diagram="attack1-good">
+    <div class="card-head"><h4>Con protección: APIM borra el header al entrar</h4><span class="tag good">Mitigado</span></div>
+    <div class="diagram"></div>
+  </div>
+</div>
+
+<div class="callout good">
+  <strong>Control 1: borrar al entrar, en el nivel más alto</strong>
+  El borrado va en el scope <strong>All APIs</strong> (policy global), como primera instrucción de <code>&lt;inbound&gt;</code>. Así aplica también a Tier 3, a operaciones nuevas y a cualquier rama del fragment. Luego, cada rama que reenvía al backend escribe el valor con <code>override</code>, incluidas <code>SKIPPED</code> y la de fail-open (por ejemplo <code>UNVERIFIED</code>).
+</div>
+
+<h2>3. Ataque 2: el atacante se salta APIM</h2>
+<div class="callout warn">
+  <strong>Contexto de la propuesta: todo vive en la red interna de IBK</strong>
+  Según el diagrama de despliegue (3.2), <code>smp-device-integrity-service</code> y el backend de negocio están en la red interna. Solo APIM está en la zona expuesta. Por eso este ataque <strong>no se puede hacer desde internet</strong>: un usuario con la app o con <code>curl</code> no llega al backend sin pasar por APIM. Lo que queda es un riesgo <strong>interno</strong>, de menor probabilidad, y se trata como defensa en profundidad.
+</div>
+<p>"Red interna" no es lo mismo que "solo APIM". El backend sigue alcanzable por cualquier cosa que ya esté dentro de la red:</p>
+<ul>
+  <li>Un host interno comprometido (malware en un servidor o en la estación de un operador).</li>
+  <li>Otros consumidores internos legítimos que llaman al backend sin pasar por APIM: el BFF (el documento dice que también invoca al servicio), batch, otras aplicaciones del banco.</li>
+  <li>Un proveedor con acceso por VPN o un pod vecino en el mismo cluster.</li>
+  <li>Una exposición accidental, como un FQDN público por defecto del App Service o un ingress mal configurado. En este caso el riesgo vuelve a ser externo.</li>
+</ul>
+<p>Por eso el control proporcional es <strong>restringir el backend a la subred de APIM</strong>, no a toda la red interna. La firma HMAC o mTLS queda como recomendación. Su peso depende de qué tan segmentada esté la red y de si otros consumidores internos llegan al mismo backend.</p>
+
+<div class="grid2">
+  <div class="card" data-diagram="attack2-bad">
+    <div class="card-head"><h4>Sin protección: el backend acepta a cualquiera</h4><span class="tag bad">Vulnerable</span></div>
+    <div class="diagram"></div>
+  </div>
+  <div class="card" data-diagram="attack2-good">
+    <div class="card-head"><h4>Con protección: el backend exige prueba de que viene de APIM</h4><span class="tag good">Mitigado</span></div>
+    <div class="diagram"></div>
+  </div>
+</div>
+
+<div class="callout good">
+  <strong>Control 2: el backend solo acepta tráfico de APIM, en capas</strong>
+  <ol style="margin:6px 0 0;padding-left:20px">
+    <li><strong>Red:</strong> private endpoint o restricción de acceso que solo permita la subred o IP de APIM. Sin FQDN público.</li>
+    <li><strong>Identidad del llamante:</strong> mTLS, con APIM presentando un certificado de cliente que el backend valida.</li>
+    <li><strong>Integridad del header:</strong> APIM firma la decisión con HMAC (decisión, operación, requestId, timestamp) y el backend verifica la firma. Aunque alguien llegue por la red, no puede fabricar una decisión válida.</li>
+  </ol>
+  Como el backend ya está en la red interna, el punto 1 se reduce a limitar el acceso a la subred de APIM. Los puntos 2 y 3 son defensa en profundidad frente a un atacante que ya está dentro.
+</div>
+
+<h2>4. Vista de conjunto: dónde actúa cada control</h2>
+<div class="card" data-diagram="layers">
+  <div class="card-head"><h4>Capas de defensa</h4><span class="tag neutral">Resumen</span></div>
+  <div class="diagram"></div>
+</div>
+
+<table>
+  <thead><tr><th>Control</th><th>Dónde</th><th>Cierra</th><th>Si falta</th></tr></thead>
+  <tbody>
+    <tr><td>Borrar <code>X-Integrity-Decision</code> entrante</td><td>APIM, policy global</td><td>Ataque 1</td><td>El cliente elige la decisión en Tier 3, en operaciones sin fragment o en fail-open</td></tr>
+    <tr><td>Escribir siempre con <code>override</code> en todas las ramas</td><td>APIM, fragment</td><td>Ataque 1</td><td>Valores duplicados, o ramas que reenvían sin decisión</td></tr>
+    <tr><td>Solo red de APIM</td><td>Red del backend</td><td>Ataque 2 desde internet</td><td>Cualquiera con la URL llama al backend</td></tr>
+    <tr><td>mTLS o firma HMAC de la decisión</td><td>APIM y backend</td><td>Ataque 2 desde la red interna</td><td>Un host interno comprometido fabrica <code>ALLOW</code></td></tr>
+    <tr><td>Sin header o firma inválida, se trata como DENY o UNVERIFIED</td><td>Backend</td><td>Ambos, como red de seguridad</td><td>Si la configuración falla, el backend queda en fail-open</td></tr>
+  </tbody>
+</table>
+
+<h2>5. Cómo se implementa</h2>
+
+<h3>5.1 APIM: policy global (scope All APIs)</h3>
+<pre><code>&lt;policies&gt;
+  &lt;inbound&gt;
+    &lt;!-- Primero: nada que venga del cliente puede parecer una decisión de APIM --&gt;
+    &lt;set-header name="X-Integrity-Decision" exists-action="delete" /&gt;
+    &lt;set-header name="X-Integrity-Signature" exists-action="delete" /&gt;
+    &lt;set-header name="X-Integrity-Timestamp" exists-action="delete" /&gt;
+    &lt;base /&gt;
+  &lt;/inbound&gt;
+  &lt;backend&gt;&lt;base /&gt;&lt;/backend&gt;
+  &lt;outbound&gt;&lt;base /&gt;&lt;/outbound&gt;
+  &lt;on-error&gt;&lt;base /&gt;&lt;/on-error&gt;
+&lt;/policies&gt;</code></pre>
+
+<h3>5.2 APIM: fragment de integridad (todas las ramas escriben y firman)</h3>
+<pre><code>&lt;fragment&gt;
+  &lt;choose&gt;
+    &lt;!-- Solo un "false" explícito apaga la validación; ausente o inválido = validar --&gt;
+    &lt;when condition="@(&quot;{{allowintegrityverify}}&quot;.Trim().ToLower() == &quot;false&quot;)"&gt;
+      &lt;set-variable name="integrityDecision" value="SKIPPED" /&gt;
+    &lt;/when&gt;
+    &lt;otherwise&gt;
+      &lt;send-request mode="new" response-variable-name="integrityResp" timeout="3" ignore-error="true"&gt;
+        &lt;set-url&gt;{{integrity-service-url}}/deviceintegrity/evaluate/posture&lt;/set-url&gt;
+        &lt;set-method&gt;POST&lt;/set-method&gt;
+        &lt;!-- token, plataforma, resumen de la petición --&gt;
+      &lt;/send-request&gt;
+      &lt;set-variable name="integrityDecision" value="@{
+        var r = context.Variables.GetValueOrDefault&lt;IResponse&gt;(&quot;integrityResp&quot;);
+        if (r == null || r.StatusCode != 200) { return &quot;UNVERIFIED&quot;; }  // fail-open controlado
+        return r.Body.As&lt;JObject&gt;()[&quot;decision&quot;].ToString();
+      }" /&gt;
+    &lt;/otherwise&gt;
+  &lt;/choose&gt;
+
+  &lt;choose&gt;
+    &lt;when condition="@((string)context.Variables[&quot;integrityDecision&quot;] == &quot;DENY&quot;)"&gt;
+      &lt;return-response&gt;&lt;set-status code="403" reason="Forbidden" /&gt;&lt;/return-response&gt;
+    &lt;/when&gt;
+  &lt;/choose&gt;
+
+  &lt;set-variable name="integrityTs" value="@(DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString())" /&gt;
+
+  &lt;!-- Siempre override, nunca append --&gt;
+  &lt;set-header name="X-Integrity-Decision" exists-action="override"&gt;
+    &lt;value&gt;@((string)context.Variables[&quot;integrityDecision&quot;])&lt;/value&gt;
+  &lt;/set-header&gt;
+  &lt;set-header name="X-Integrity-Timestamp" exists-action="override"&gt;
+    &lt;value&gt;@((string)context.Variables[&quot;integrityTs&quot;])&lt;/value&gt;
+  &lt;/set-header&gt;
+  &lt;set-header name="X-Integrity-Signature" exists-action="override"&gt;
+    &lt;value&gt;@{
+      var data = string.Join(&quot;|&quot;,
+        (string)context.Variables[&quot;integrityDecision&quot;],
+        context.Request.Method,
+        context.Request.Url.Path,
+        context.RequestId.ToString(),
+        (string)context.Variables[&quot;integrityTs&quot;]);
+      using (var h = new System.Security.Cryptography.HMACSHA256(
+               System.Text.Encoding.UTF8.GetBytes(&quot;{{integrity-hmac-key}}&quot;))) {
+        return Convert.ToBase64String(h.ComputeHash(System.Text.Encoding.UTF8.GetBytes(data)));
+      }
+    }&lt;/value&gt;
+  &lt;/set-header&gt;
+  &lt;set-header name="X-Request-Id" exists-action="override"&gt;
+    &lt;value&gt;@(context.RequestId.ToString())&lt;/value&gt;
+  &lt;/set-header&gt;
+&lt;/fragment&gt;</code></pre>
+<p style="font-size:13.5px;color:var(--muted)"><code>{{integrity-hmac-key}}</code> es un Named Value secreto respaldado por Key Vault. El mismo secreto lo lee el backend desde Key Vault, y se rota en ambos lados.</p>
+
+<h3>5.3 Backend: filtro que verifica antes de cualquier lógica de negocio</h3>
+<pre><code>// Pseudocódigo (Java / Spring), aplicado como filtro a todos los endpoints protegidos
+String decision  = req.getHeader("X-Integrity-Decision");
+String ts        = req.getHeader("X-Integrity-Timestamp");
+String signature = req.getHeader("X-Integrity-Signature");
+String requestId = req.getHeader("X-Request-Id");
+
+if (decision == null || signature == null || ts == null) {
+    return deny("INTEGRITY_HEADER_MISSING");          // nunca asumir ALLOW
+}
+if (req.getHeaders("X-Integrity-Decision").size() &gt; 1) {
+    return deny("INTEGRITY_HEADER_DUPLICATED");       // defensa contra append
+}
+if (Math.abs(now() - Long.parseLong(ts)) &gt; 30) {
+    return deny("INTEGRITY_HEADER_STALE");            // evita reutilizar una firma vieja
+}
+String expected = hmacSha256(key, String.join("|",
+        decision, req.getMethod(), req.getRequestURI(), requestId, ts));
+if (!MessageDigest.isEqual(expected.getBytes(), signature.getBytes())) {
+    return deny("INTEGRITY_SIGNATURE_INVALID");       // no viene de APIM
+}
+switch (decision) {
+    case "ALLOW"      -&gt; proceed();
+    case "DEGRADED"   -&gt; proceedWithRestrictions();   // solo si la operación tiene restricción aprobada
+    case "SKIPPED"    -&gt; proceedAndAudit();           // kill switch activo
+    case "UNVERIFIED" -&gt; tier1 ? deny("FAIL_CLOSED") : proceedWithRestrictions();
+    default           -&gt; deny("INTEGRITY_DECISION_UNKNOWN");
+}</code></pre>
+
+<h3>5.4 Red</h3>
+<ul>
+  <li>Backend con private endpoint o access restrictions que permitan solo la subred de APIM (VNet integrada).</li>
+  <li>Sin FQDN público alcanzable. Si existe, con restricción explícita y probada.</li>
+  <li>Opcional: mTLS entre APIM y backend (policy <code>authentication-certificate</code> en APIM y validación del certificado en el backend).</li>
+</ul>
+
+<h2>6. Cómo probar que está cerrado</h2>
+<table>
+  <thead><tr><th>Prueba</th><th>Petición</th><th>Resultado esperado</th></tr></thead>
+  <tbody>
+    <tr><td>Inyección en Tier 1</td><td>Operación Tier 1 con token inválido y <code>X-Integrity-Decision: ALLOW</code></td><td>403. El backend nunca recibe la petición.</td></tr>
+    <tr><td>Inyección en Tier 3</td><td>Operación Tier 3 con <code>X-Integrity-Decision: ALLOW</code></td><td>El backend no ve el header del cliente (revisar en los logs del backend o con un echo).</td></tr>
+    <tr><td>Kill switch</td><td><code>allowintegrityverify = false</code> y header <code>ALLOW</code> del cliente</td><td>El backend recibe <code>SKIPPED</code>, no <code>ALLOW</code>.</td></tr>
+    <tr><td>Fail-open</td><td>Servicio de integridad apagado y header <code>ALLOW</code> del cliente</td><td>El backend recibe <code>UNVERIFIED</code> y Tier 1 se rechaza.</td></tr>
+    <tr><td>Variantes</td><td><code>x-integrity-decision</code>, duplicado o <code>X_Integrity_Decision</code></td><td>Ninguna llega al backend, o el backend las rechaza.</td></tr>
+    <tr><td>Bypass de red</td><td><code>curl</code> directo al FQDN o IP del backend desde fuera de la subred de APIM</td><td>Timeout o 403 en la red.</td></tr>
+    <tr><td>Bypass interno</td><td>Desde un host interno, con header <code>ALLOW</code> y una firma inventada</td><td>El backend responde <code>INTEGRITY_SIGNATURE_INVALID</code>.</td></tr>
+  </tbody>
+</table>
+
+</main>
+
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
+
+const D = {
+  normal: `sequenceDiagram
+    autonumber
+    participant App as App Personas
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    participant BE as Backend de negocio
+    App->>APIM: Operación + X-TOKEN-INTEGRITY
+    APIM->>INT: Evalúa evidencia
+    INT-->>APIM: decision ALLOW
+    APIM->>BE: Operación + X-Integrity-Decision ALLOW
+    Note over BE: Confía en el header y procesa
+    BE-->>APIM: Respuesta
+    APIM-->>App: Respuesta`,
+
+  'attack1-bad': `sequenceDiagram
+    autonumber
+    participant ATK as Atacante (proxy o curl)
+    participant APIM as APIM
+    participant BE as Backend de negocio
+    ATK->>APIM: Operación + X-Integrity-Decision ALLOW (falso)
+    Note over APIM: Tier 3, sin fragment o rama fail-open
+    Note over APIM: No escribe el header, reenvía todo
+    APIM->>BE: Operación + X-Integrity-Decision ALLOW
+    Note over BE: Lee ALLOW y procesa
+    BE-->>APIM: 200 OK
+    APIM-->>ATK: Operación ejecutada`,
+
+  'attack1-good': `sequenceDiagram
+    autonumber
+    participant ATK as Atacante (proxy o curl)
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    participant BE as Backend de negocio
+    ATK->>APIM: Operación + X-Integrity-Decision ALLOW (falso)
+    APIM->>APIM: Policy global, delete X-Integrity-Decision
+    APIM->>INT: Evalúa token inválido
+    INT-->>APIM: decision DENY
+    APIM-->>ATK: 403 Forbidden
+    Note over BE: Nunca recibe la petición`,
+
+  'attack2-bad': `sequenceDiagram
+    autonumber
+    participant ATK as Atacante en red interna
+    participant APIM as APIM
+    participant BE as Backend de negocio
+    Note over ATK,APIM: APIM queda fuera del camino
+    ATK->>BE: Operación + X-Integrity-Decision ALLOW (directo)
+    Note over BE: No distingue quién escribió el header
+    BE-->>ATK: 200 OK, operación ejecutada`,
+
+  'attack2-good': `sequenceDiagram
+    autonumber
+    participant ATK as Atacante
+    participant NET as Red (solo subred APIM)
+    participant BE as Backend de negocio
+    ATK-xNET: Host interno fuera de la subred APIM
+    Note over NET: Bloqueado, origen no permitido
+    ATK->>BE: Desde la subred permitida + ALLOW + firma inventada
+    BE->>BE: Verifica HMAC de la decisión
+    BE-->>ATK: 403 INTEGRITY_SIGNATURE_INVALID`,
+
+  layers: `flowchart LR
+    C[App o atacante] -->|headers del cliente| G
+    subgraph APIM_Z[APIM]
+      G[Policy global: delete X-Integrity-Decision] --> F[Fragment: evalúa y escribe con override]
+      F --> S[Firma HMAC de decisión, ruta, requestId y timestamp]
+    end
+    S -->|solo subred APIM y mTLS| B
+    X[Atacante interno o directo] -.->|bloqueado por red| B
+    X -.->|firma inválida| V
+    subgraph BE_Z[Backend de negocio]
+      B[Entrada] --> V[Filtro: valida header, firma y frescura]
+      V -->|ALLOW, DEGRADED, SKIPPED| N[Lógica de negocio]
+      V -->|faltante o inválido| D[DENY]
+    end
+    classDef good fill:#E8F7EE,stroke:#15803D,color:#14532D
+    classDef bad fill:#FDECEC,stroke:#B91C1C,color:#7F1D1D
+    class G,F,S,V good
+    class X,D bad`
+};
+
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  themeVariables: {
+    primaryColor: '#EEF2FF',
+    primaryBorderColor: '#001391',
+    primaryTextColor: '#001391',
+    lineColor: '#46536D',
+    actorBkg: '#EEF2FF',
+    actorBorder: '#001391',
+    actorTextColor: '#001391',
+    actorLineColor: '#9AA6C4',
+    signalColor: '#46536D',
+    signalTextColor: '#1F2937',
+    noteBkgColor: '#FFF4D6',
+    noteBorderColor: '#B7791F',
+    noteTextColor: '#1F2937',
+    sequenceNumberColor: '#FFFFFF',
+    clusterBkg: '#F8FAFF',
+    clusterBorder: '#9AA6C4'
+  },
+  sequence: { mirrorActors: true, useMaxWidth: false, actorMargin: 30, messageMargin: 30 },
+  flowchart: { useMaxWidth: false, htmlLabels: false, curve: 'basis' }
+});
+
+function fitSvg(svg) {
+  const pad = 12;
+  const bb = svg.getBBox();
+  const w = Math.ceil(bb.width + pad * 2);
+  const h = Math.ceil(bb.height + pad * 2);
+  svg.setAttribute('viewBox', `${bb.x - pad} ${bb.y - pad} ${w} ${h}`);
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  svg.style.maxWidth = '100%';
+  svg.style.height = 'auto';
+}
+
+function pngBlob(svg, scale = 2) {
+  const clone = svg.cloneNode(true);
+  const w = +svg.getAttribute('width');
+  const h = +svg.getAttribute('height');
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.style.maxWidth = '';
+  const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone));
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = w * scale;
+      c.height = h * scale;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0, w, h);
+      c.toBlob(b => (b ? resolve(b) : reject(new Error('PNG'))), 'image/png');
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+for (const card of document.querySelectorAll('[data-diagram]')) {
+  const key = card.dataset.diagram;
+  const target = card.querySelector('.diagram');
+  try {
+    const { svg } = await mermaid.render(`svg-${key}`, D[key]);
+    target.innerHTML = svg;
+    const el = target.querySelector('svg');
+    fitSvg(el);
+    const btn = document.createElement('button');
+    btn.textContent = 'Descargar PNG';
+    btn.onclick = async () => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(await pngBlob(el));
+      a.download = `X-Integrity-Decision-${key}.png`;
+      a.click();
+    };
+    card.querySelector('.card-head').appendChild(btn);
+  } catch (e) {
+    target.textContent = 'Error al renderizar: ' + (e.message || e);
+  }
+}
+</script>
+</body>
+</html>

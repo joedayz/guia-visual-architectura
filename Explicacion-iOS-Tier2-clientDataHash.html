@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>iOS Tier 2: recalcular clientDataHash — explicación</title>
+<style>
+  :root {
+    --brand: #001391;
+    --ink: #1F2937;
+    --muted: #46536D;
+    --line: #D6DCEB;
+    --bg: #F5F7FC;
+    --bad: #B91C1C;
+    --bad-bg: #FDECEC;
+    --good: #15803D;
+    --good-bg: #E8F7EE;
+    --warn: #B7791F;
+    --warn-bg: #FFF8E6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.55;
+  }
+  header { background: var(--brand); color: #fff; padding: 28px 40px; }
+  header h1 { margin: 0 0 6px; font-size: 24px; }
+  header p { margin: 0; opacity: .88; max-width: 900px; }
+  header code { background: rgba(255,255,255,.15); color: #fff; }
+  main { max-width: 1200px; margin: 0 auto; padding: 24px 40px 60px; }
+  h2 { color: var(--brand); border-bottom: 2px solid var(--brand); padding-bottom: 6px; margin-top: 44px; }
+  h3 { margin: 26px 0 8px; }
+  p, li { font-size: 15px; }
+  code { background: #EEF2FF; padding: 1px 5px; border-radius: 4px; font-size: 13.5px; }
+  pre {
+    background: #0F172A;
+    color: #E2E8F0;
+    padding: 16px 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+  .callout {
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    border: 1px solid;
+    border-left-width: 5px;
+  }
+  .callout.bad { background: var(--bad-bg); border-color: #F5C2C2; border-left-color: var(--bad); }
+  .callout.good { background: var(--good-bg); border-color: #BDE5CB; border-left-color: var(--good); }
+  .callout.warn { background: var(--warn-bg); border-color: #F1D49A; border-left-color: var(--warn); }
+  .callout > strong:first-child { display: block; margin-bottom: 4px; }
+  .card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin: 16px 0 24px;
+    overflow: hidden;
+  }
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line);
+    background: #FAFBFE;
+    gap: 12px;
+  }
+  .card-head h4 { margin: 0; font-size: 14.5px; }
+  .tag { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+  .tag.bad { background: var(--bad-bg); color: var(--bad); }
+  .tag.good { background: var(--good-bg); color: var(--good); }
+  .tag.neutral { background: #EEF2FF; color: var(--brand); }
+  .card-head button {
+    border: 1px solid var(--brand);
+    background: #fff;
+    color: var(--brand);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .card-head button:hover { background: var(--brand); color: #fff; }
+  .diagram { padding: 16px; overflow-x: auto; text-align: center; }
+  .diagram svg { max-width: 100%; height: auto; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+  table { border-collapse: collapse; width: 100%; background: #fff; font-size: 14px; margin: 12px 0; }
+  th, td { border: 1px solid var(--line); padding: 9px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--brand); color: #fff; }
+  td.yes { color: var(--good); font-weight: 600; }
+  td.no { color: var(--bad); font-weight: 600; }
+  td.part { color: var(--warn); font-weight: 600; }
+  .analogy {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin: 14px 0;
+  }
+  @media (max-width: 900px) { .analogy { grid-template-columns: 1fr; } }
+  .analogy div {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-size: 14px;
+  }
+  .analogy div b { display: block; color: var(--brand); margin-bottom: 4px; }
+  .box {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 16px;
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .box .hl { background: #FDE2E2; color: var(--bad); font-weight: 700; }
+  .box .ok { background: #DCFCE7; color: var(--good); font-weight: 700; }
+  .box .dim { color: var(--muted); }
+  .tldr {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>iOS Tier 2: ¿por qué el servicio debe recalcular el <code>clientDataHash</code>?</h1>
+  <p>Explicación del riesgo en el flujo "iOS Tier 2, assertion sin challenge por request" de <code>smp-device-integrity-service</code>: una aserción válida pegada a otra petición.</p>
+</header>
+
+<main>
+
+<section class="tldr">
+  <strong>En una frase:</strong> la aserción de App Attest es una firma del dispositivo sobre un <code>clientDataHash</code>. Si el servicio verifica la firma usando un hash que <em>le manda la app</em>, solo comprueba que el dispositivo firmó <em>algo</em>, no que firmó <em>esta petición</em>. Hay que recalcular el hash con los datos que APIM realmente recibió.
+  <p style="margin:10px 0 0">El <strong>counter</strong> no lo evita: impide usar una aserción dos veces, pero no impide usarla <strong>una vez en la petición equivocada</strong>.</p>
+</section>
+
+<h2>1. La idea con una analogía</h2>
+<div class="analogy">
+  <div><b>La firma</b>El cliente firma un papel que dice "huella del documento: 7F3A...". La firma es auténtica, de su puño y letra.</div>
+  <div><b>Lo que se revisa hoy</b>El cajero comprueba que la firma es del cliente y que corresponde a la huella "7F3A..." escrita en el papel. Todo cuadra.</div>
+  <div><b>Lo que falta</b>Nadie calcula la huella del documento que <strong>realmente</strong> se entregó. Si alguien cambia el documento y deja el papel firmado, nadie lo nota.</div>
+</div>
+
+<h2>2. Cómo se verifica una aserción de App Attest</h2>
+<p>Esto es lo que dice Apple ("Validating apps that connect to your server", paso de assertion):</p>
+<div class="box"><span class="dim">// En el iPhone</span>
+clientDataHash = SHA256(clientData)                        <span class="dim">// clientData = datos de la petición</span>
+assertion      = generateAssertion(keyId, clientDataHash)  <span class="dim">// firma en el Secure Enclave</span>
+
+<span class="dim">// En el servidor</span>
+1. clientDataHash = SHA256(clientData)                     <span class="hl">← ¿de dónde sale clientData?</span>
+2. nonce = SHA256(authenticatorData || clientDataHash)
+3. Verificar la firma de la assertion sobre nonce con la clave pública de keyId
+4. rpIdHash == SHA256(teamId.bundleId)
+5. counter &gt; counter guardado</div>
+
+<div class="callout warn">
+  <strong>El punto clave</strong>
+  El servidor <strong>no puede</strong> verificar la firma sin un <code>clientDataHash</code>. Así que la implementación siempre va a tener uno. La pregunta es de dónde lo saca:
+  <ul style="margin:6px 0 0">
+    <li><strong>Vulnerable:</strong> la app lo manda en un header (por ejemplo <code>X-INTEGRITY-CLIENT-DATA-HASH</code>), o manda <code>clientData</code> y nadie lo compara con la petición real.</li>
+    <li><strong>Correcto:</strong> el servicio lo arma él mismo con el método, la ruta, el cuerpo y el timestamp de la petición que APIM recibió.</li>
+  </ul>
+  El diagrama del documento dice "verifica firma, rpIdHash y counter", pero no indica de dónde sale el hash. Ahí está el hueco.
+</div>
+
+<h2>3. El flujo del documento y la implementación vulnerable</h2>
+<div class="grid2">
+  <div class="card" data-diagram="doc">
+    <div class="card-head"><h4>Como está en el documento</h4><span class="tag neutral">Referencia</span></div>
+    <div class="diagram"></div>
+  </div>
+  <div class="card" data-diagram="vulnerable">
+    <div class="card-head"><h4>Implementación que "cumple" el diagrama y es vulnerable</h4><span class="tag bad">Vulnerable</span></div>
+    <div class="diagram"></div>
+  </div>
+</div>
+
+<h2>4. Cómo sucedería el ataque</h2>
+
+<h3>4.1 Ataque A: modificar la petición después de firmarla</h3>
+<p>El atacante usa la app real en su iPhone real (App Attest lo exige), pero pone un proxy entre la app y APIM. La app firma la petición original y el proxy cambia el cuerpo antes de enviarla. La aserción sigue siendo válida, porque se verifica contra el hash que viajó en el header, que no cambió.</p>
+<div class="box">POST /beneficiaries/add            <span class="dim">(Tier 2)</span>
+X-TOKEN-INTEGRITY: o2NmbXRv...        <span class="dim">(assertion real del iPhone)</span>
+X-INTEGRITY-KEY-ID: k9Zx...
+X-INTEGRITY-CLIENT-DATA-HASH: 7F3A... <span class="dim">(hash de la petición ORIGINAL)</span>
+
+{"alias":"mamá","account":"<span class="hl">ATACANTE-0099</span>"}    <span class="dim">← antes decía "...-1234"</span></div>
+
+<div class="card" data-diagram="attack-tamper">
+  <div class="card-head"><h4>Ataque A: el proxy cambia el cuerpo y la aserción sigue pasando</h4><span class="tag bad">Vulnerable</span></div>
+  <div class="diagram"></div>
+</div>
+
+<h3>4.2 Ataque B: trasplantar aserciones a un bot</h3>
+<p>El atacante usa su iPhone legítimo como "fábrica" de aserciones. Cada aserción, con su hash, se pega en una petición distinta armada por un bot o un script. El counter no lo frena, porque cada aserción tiene un counter mayor que la anterior y se usa una sola vez.</p>
+<div class="card" data-diagram="attack-transplant">
+  <div class="card-head"><h4>Ataque B: aserciones de un iPhone real usadas por un bot</h4><span class="tag bad">Vulnerable</span></div>
+  <div class="diagram"></div>
+</div>
+
+<h3>4.3 Ataque C: acumular aserciones para usarlas después</h3>
+<p>La aserción no lleva hora: Apple no pone timestamp dentro. Si el timestamp no forma parte del <code>clientData</code> y el servidor no lo valida, el atacante puede generar 1000 aserciones hoy y gastarlas en orden la semana siguiente. El counter seguirá subiendo y todas pasarán.</p>
+
+<div class="callout bad">
+  <strong>Resultado</strong>
+  El control de integridad de iOS Tier 2 queda en "existe un iPhone legítimo en algún lado", y no en "esta petición viene de la app legítima, sin modificar". Para Tier 2 eso habilita bots, scraping y cambios de parámetros sobre peticiones firmadas.
+</div>
+
+<h2>5. La corrección</h2>
+<h3>5.1 Qué cambia</h3>
+<ol>
+  <li><strong>La app</strong> arma el <code>clientData</code> con datos de la petición y un timestamp, y firma su hash. Envía la aserción, el <code>keyId</code> y el timestamp, pero <strong>no envía el hash</strong>.</li>
+  <li><strong>APIM</strong> manda al servicio el resumen de la petición que recibió: método, ruta, <code>SHA256(cuerpo)</code>, <code>deviceid</code> y timestamp.</li>
+  <li><strong>El servicio</strong> recalcula el <code>clientDataHash</code> con esos datos y verifica la firma contra <em>ese</em> hash. Si alguien cambió la petición, la firma no valida.</li>
+  <li><strong>El servicio</strong> comprueba que el timestamp esté dentro de la ventana de frescura (por ejemplo 60 a 120 s). Eso cierra el Ataque C.</li>
+  <li><strong>El counter</strong> se actualiza con escritura condicional (ETag de Cosmos DB), para que dos peticiones simultáneas no pasen con el mismo counter.</li>
+</ol>
+<pre><code>clientData     = método | ruta | SHA256(cuerpo) | deviceid | timestamp
+clientDataHash = SHA256(clientData)</code></pre>
+
+<div class="card" data-diagram="fixed">
+  <div class="card-head"><h4>Flujo corregido: el servicio recalcula el clientDataHash</h4><span class="tag good">Mitigado</span></div>
+  <div class="diagram"></div>
+</div>
+
+<h3>5.2 Qué pasa ahora con los ataques</h3>
+<div class="grid2">
+  <div class="card" data-diagram="fixed-tamper">
+    <div class="card-head"><h4>Ataque A: cuerpo modificado</h4><span class="tag good">Bloqueado</span></div>
+    <div class="diagram"></div>
+  </div>
+  <div class="card" data-diagram="fixed-transplant">
+    <div class="card-head"><h4>Ataque B: aserción trasplantada a otra petición</h4><span class="tag good">Bloqueado</span></div>
+    <div class="diagram"></div>
+  </div>
+</div>
+
+<h2>6. Qué cubre cada control</h2>
+<table>
+  <thead><tr><th>Intento del atacante</th><th>Firma + counter (documento)</th><th>+ recalcular hash</th><th>+ timestamp en la ventana</th></tr></thead>
+  <tbody>
+    <tr><td>Reenviar la misma petición con la misma aserción</td><td class="yes">Bloqueado por el counter</td><td class="yes">Bloqueado</td><td class="yes">Bloqueado</td></tr>
+    <tr><td>Ataque A: modificar el cuerpo tras firmar</td><td class="no">Pasa</td><td class="yes">Bloqueado</td><td class="yes">Bloqueado</td></tr>
+    <tr><td>Ataque B: pegar la aserción en la petición de un bot</td><td class="no">Pasa</td><td class="yes">Bloqueado</td><td class="yes">Bloqueado</td></tr>
+    <tr><td>Ataque C: acumular aserciones y usarlas días después</td><td class="no">Pasa</td><td class="part">Pasa si el bot reproduce exactamente esas peticiones</td><td class="yes">Bloqueado</td></tr>
+  </tbody>
+</table>
+
+<div class="callout warn">
+  <strong>Riesgo residual</strong>
+  Con un iPhone con jailbreak, el atacante podría hacer que la app legítima firme peticiones arbitrarias (relay). App Attest no detecta jailbreak por sí solo. Es un riesgo conocido de la plataforma: lo mitigan el límite de peticiones por <code>keyId</code> y <code>deviceid</code>, el campo opcional de riesgo de fraude de Apple (receipt) y Tier 1 para lo crítico. Conviene documentarlo como riesgo aceptado para Tier 2.
+</div>
+
+<h2>7. Orden de validación en el servicio</h2>
+<div class="card" data-diagram="flow">
+  <div class="card-head"><h4>Validación de una aserción iOS Tier 2</h4><span class="tag neutral">Resumen</span></div>
+  <div class="diagram"></div>
+</div>
+
+<h2>8. Cómo se implementa</h2>
+
+<h3>8.1 App (Swift, ilustrativo)</h3>
+<pre><code>let ts = String(Int(Date().timeIntervalSince1970 * 1000))
+let bodyHash = SHA256.hash(data: body).hexString
+let clientData = [method, path, bodyHash, deviceId, ts].joined(separator: "|")
+let clientDataHash = Data(SHA256.hash(data: Data(clientData.utf8)))
+
+let assertion = try await DCAppAttestService.shared.generateAssertion(keyId, clientDataHash: clientDataHash)
+
+request.setValue(assertion.base64EncodedString(), forHTTPHeaderField: "X-TOKEN-INTEGRITY")
+request.setValue(keyId,                         forHTTPHeaderField: "X-INTEGRITY-KEY-ID")
+request.setValue("ios",                         forHTTPHeaderField: "X-INTEGRITY-PLATFORM")
+request.setValue(ts,                            forHTTPHeaderField: "X-INTEGRITY-TIMESTAMP")
+// No se envía clientDataHash: lo calcula el servidor</code></pre>
+
+<h3>8.2 APIM: enviar el resumen de la petición</h3>
+<pre><code>&lt;!-- Nunca reenviar un hash calculado por el cliente --&gt;
+&lt;set-header name="X-INTEGRITY-CLIENT-DATA-HASH" exists-action="delete" /&gt;
+
+&lt;set-variable name="bodyHash" value="@{
+  var body = context.Request.Body?.As&lt;string&gt;(preserveContent: true) ?? &quot;&quot;;
+  using (var sha = System.Security.Cryptography.SHA256.Create()) {
+    return BitConverter.ToString(sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(body)))
+                       .Replace(&quot;-&quot;, &quot;&quot;).ToLower();
+  }
+}" /&gt;
+&lt;send-request mode="new" response-variable-name="integrityResp" timeout="3" ignore-error="true"&gt;
+  &lt;set-url&gt;{{integrity-service-url}}/deviceintegrity/evaluate/posture&lt;/set-url&gt;
+  &lt;set-method&gt;POST&lt;/set-method&gt;
+  &lt;set-header name="Content-Type" exists-action="override"&gt;&lt;value&gt;application/json&lt;/value&gt;&lt;/set-header&gt;
+  &lt;set-body&gt;@(new JObject(
+      new JProperty(&quot;platform&quot;,  &quot;ios&quot;),
+      new JProperty(&quot;assertion&quot;, context.Request.Headers.GetValueOrDefault(&quot;X-TOKEN-INTEGRITY&quot;, &quot;&quot;)),
+      new JProperty(&quot;keyId&quot;,     context.Request.Headers.GetValueOrDefault(&quot;X-INTEGRITY-KEY-ID&quot;, &quot;&quot;)),
+      new JProperty(&quot;method&quot;,    context.Request.Method),
+      new JProperty(&quot;path&quot;,      context.Request.OriginalUrl.Path),
+      new JProperty(&quot;bodyHash&quot;,  (string)context.Variables[&quot;bodyHash&quot;]),
+      new JProperty(&quot;deviceId&quot;,  context.Request.Headers.GetValueOrDefault(&quot;deviceid&quot;, &quot;&quot;)),
+      new JProperty(&quot;timestamp&quot;, context.Request.Headers.GetValueOrDefault(&quot;X-INTEGRITY-TIMESTAMP&quot;, &quot;&quot;))
+  ).ToString())&lt;/set-body&gt;
+&lt;/send-request&gt;</code></pre>
+
+<h3>8.3 Servicio (pseudocódigo)</h3>
+<pre><code>Decision evaluateIosPosture(Req r) {
+    long now = clock.millis();
+    if (abs(now - parseLong(r.timestamp)) &gt; WINDOW_MS)  return deny("TIMESTAMP_STALE");
+
+    Device d = cosmos.read(r.keyId);                      // clave pública, counter, deviceId, etag
+    if (d == null)                                        return deny("KEY_NOT_ENROLLED");
+    if (!d.deviceId.equals(r.deviceId))                   return deny("DEVICE_MISMATCH");
+
+    Assertion a = cbor.decode(base64(r.assertion));       // signature + authenticatorData
+
+    // El hash se arma aquí, con la petición real; nunca se toma del cliente
+    byte[] clientDataHash = sha256(join("|", r.method, r.path, r.bodyHash, r.deviceId, r.timestamp));
+    byte[] nonce = sha256(concat(a.authenticatorData, clientDataHash));
+    if (!ecdsaVerify(d.publicKey, nonce, a.signature))    return deny("ASSERTION_INVALID");
+
+    if (!a.rpIdHash().equals(sha256(TEAM_ID + "." + BUNDLE_ID))) return deny("APP_MISMATCH");
+
+    long counter = a.counter();
+    if (counter &lt;= d.counter)                             return deny("COUNTER_REPLAYED");
+    if (!cosmos.replaceIfMatch(r.keyId, d.withCounter(counter), d.etag))
+                                                          return deny("COUNTER_RACE");
+
+    return allow();
+}</code></pre>
+
+<h2>9. Cómo probarlo</h2>
+<table>
+  <thead><tr><th>Prueba</th><th>Resultado esperado</th></tr></thead>
+  <tbody>
+    <tr><td>Petición legítima de la app</td><td>ALLOW</td></tr>
+    <tr><td>Con un proxy, cambiar un campo del cuerpo y dejar la aserción igual</td><td>DENY <code>ASSERTION_INVALID</code></td></tr>
+    <tr><td>Cambiar la ruta, por ejemplo enviar a otro endpoint Tier 2 con la misma aserción</td><td>DENY <code>ASSERTION_INVALID</code></td></tr>
+    <tr><td>Añadir un header <code>X-INTEGRITY-CLIENT-DATA-HASH</code> con un hash "correcto"</td><td>Se ignora: APIM lo borra y el servicio no lo lee</td></tr>
+    <tr><td>Reenviar la misma petición idéntica</td><td>DENY <code>COUNTER_REPLAYED</code></td></tr>
+    <tr><td>Generar una aserción con un timestamp de hace 10 minutos</td><td>DENY <code>TIMESTAMP_STALE</code></td></tr>
+    <tr><td>Dos peticiones simultáneas con aserciones del mismo counter</td><td>Una pasa y la otra recibe DENY <code>COUNTER_RACE</code> o <code>COUNTER_REPLAYED</code></td></tr>
+  </tbody>
+</table>
+
+<h2>10. Ajustes al documento</h2>
+<ul>
+  <li>En el diagrama iOS Tier 2, cambiar "verifica firma, rpIdHash y counter mayor al guardado" por: <strong>"recalcula clientDataHash con la petición recibida, verifica firma, rpIdHash, frescura del timestamp y counter mayor al guardado"</strong>.</li>
+  <li>Agregar <code>X-INTEGRITY-TIMESTAMP</code> a los headers de iOS Tier 2.</li>
+  <li>Indicar que APIM envía al servicio método, ruta, <code>SHA256(cuerpo)</code>, <code>deviceid</code> y timestamp.</li>
+  <li>Definir por escrito la serialización del <code>clientData</code> (separador, codificación, ruta y cuerpo), igual que el payload canónico de Tier 1.</li>
+  <li>Documentar el relay con jailbreak como riesgo residual aceptado.</li>
+</ul>
+
+</main>
+
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
+
+const D = {
+  doc: `sequenceDiagram
+    autonumber
+    participant App as App iOS
+    participant SE as Secure Enclave
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    participant C as Cosmos DB
+    App->>App: clientDataHash = SHA256(datos + timestamp)
+    App->>SE: generateAssertion(keyId, clientDataHash)
+    SE-->>App: assertion
+    App->>APIM: Request + assertion + keyId
+    APIM->>INT: Ruta interna
+    INT->>C: Lee clave pública y counter
+    INT->>INT: Verifica firma, rpIdHash y counter
+    Note over INT: No dice de dónde sale el hash
+    INT->>C: Actualiza counter
+    INT-->>APIM: ALLOW`,
+
+  vulnerable: `sequenceDiagram
+    autonumber
+    participant App as App iOS
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    App->>APIM: Request + assertion + keyId + clientDataHash
+    APIM->>INT: assertion + keyId + clientDataHash del cliente
+    INT->>INT: nonce = SHA256(authData + hash recibido)
+    INT->>INT: Firma válida sobre ese hash
+    Note over INT: Nunca compara el hash con la petición real
+    INT-->>APIM: ALLOW`,
+
+  'attack-tamper': `sequenceDiagram
+    autonumber
+    participant App as App iOS real
+    participant PX as Proxy del atacante
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    participant BE as Backend de negocio
+    App->>App: Firma la petición original (cuenta 1234)
+    App->>PX: Request + assertion + hash de la original
+    PX->>PX: Cambia la cuenta por ATACANTE-0099
+    PX->>APIM: Request modificada + misma assertion + mismo hash
+    APIM->>INT: Evalúa
+    INT->>INT: Firma válida sobre el hash recibido, counter ok
+    INT-->>APIM: ALLOW
+    APIM->>BE: Request modificada + X-Integrity-Decision ALLOW`,
+
+  'attack-transplant': `sequenceDiagram
+    autonumber
+    participant IP as iPhone real del atacante
+    participant BOT as Bot o script
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    loop Cada aserción
+        IP->>IP: generateAssertion sobre un hash cualquiera
+        IP->>BOT: assertion + hash (counter N)
+        BOT->>APIM: Petición armada por el bot + assertion + hash
+        APIM->>INT: Evalúa
+        INT->>INT: Firma válida, counter N mayor al guardado
+        INT-->>APIM: ALLOW
+    end
+    Note over IP,INT: El counter no frena: cada aserción se usa una sola vez`,
+
+  fixed: `sequenceDiagram
+    autonumber
+    participant App as App iOS
+    participant SE as Secure Enclave
+    participant APIM as APIM (policy fragment)
+    participant INT as smp-device-integrity-service
+    participant C as Cosmos DB
+    participant BE as Backend de negocio
+    App->>App: clientData = método | ruta | SHA256(cuerpo) | deviceid | timestamp
+    App->>SE: generateAssertion(keyId, SHA256(clientData))
+    SE-->>App: assertion
+    App->>APIM: Request + assertion + keyId + X-INTEGRITY-TIMESTAMP
+    APIM->>APIM: Borra cualquier hash del cliente y calcula SHA256(cuerpo)
+    APIM->>INT: assertion, keyId, método, ruta, hash del cuerpo, deviceid, timestamp
+    INT->>INT: Timestamp dentro de la ventana
+    INT->>C: Lee clave pública, counter y etag
+    INT->>INT: Recalcula clientDataHash con la petición recibida
+    INT->>INT: Verifica firma, rpIdHash y counter mayor al guardado
+    INT->>C: Actualiza counter (condicional con ETag)
+    INT-->>APIM: ALLOW
+    APIM->>BE: Request + X-Integrity-Decision ALLOW`,
+
+  'fixed-tamper': `sequenceDiagram
+    autonumber
+    participant PX as Proxy del atacante
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    PX->>APIM: Cuerpo modificado + assertion original
+    APIM->>INT: Resumen del cuerpo modificado
+    INT->>INT: Recalcula hash con el cuerpo modificado
+    INT->>INT: La firma no valida con ese hash
+    INT-->>APIM: DENY ASSERTION_INVALID
+    APIM-->>PX: 403 Forbidden`,
+
+  'fixed-transplant': `sequenceDiagram
+    autonumber
+    participant BOT as Bot o script
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    BOT->>APIM: Petición del bot + assertion de otra petición
+    APIM->>INT: Resumen de la petición del bot
+    INT->>INT: Recalcula hash con la petición del bot
+    INT->>INT: La firma era sobre otro hash, no valida
+    INT-->>APIM: DENY ASSERTION_INVALID
+    APIM-->>BOT: 403 Forbidden`,
+
+  flow: `flowchart TD
+    A([assertion + keyId + resumen de la petición]) --> B{Timestamp dentro de la ventana}
+    B -- No --> X1[DENY TIMESTAMP_STALE]
+    B -- Sí --> C{keyId enrolado y deviceid coincide}
+    C -- No --> X2[DENY KEY_NOT_ENROLLED o DEVICE_MISMATCH]
+    C -- Sí --> D[Servicio recalcula clientDataHash con la petición recibida]
+    D --> E{Firma válida sobre SHA256 de authData y clientDataHash}
+    E -- No --> X3[DENY ASSERTION_INVALID]
+    E -- Sí --> F{rpIdHash es de nuestra app}
+    F -- No --> X4[DENY APP_MISMATCH]
+    F -- Sí --> G{counter mayor al guardado}
+    G -- No --> X5[DENY COUNTER_REPLAYED]
+    G -- Sí --> H{Escritura condicional del counter con ETag}
+    H -- conflicto --> X6[DENY COUNTER_RACE]
+    H -- ok --> OK[ALLOW]
+    classDef bad fill:#FDECEC,stroke:#B91C1C,color:#7F1D1D
+    classDef good fill:#E8F7EE,stroke:#15803D,color:#14532D
+    classDef key fill:#FFF4D6,stroke:#B7791F,color:#7A4F0F
+    class X1,X2,X3,X4,X5,X6 bad
+    class OK good
+    class D key`
+};
+
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  themeVariables: {
+    primaryColor: '#EEF2FF',
+    primaryBorderColor: '#001391',
+    primaryTextColor: '#001391',
+    lineColor: '#46536D',
+    actorBkg: '#EEF2FF',
+    actorBorder: '#001391',
+    actorTextColor: '#001391',
+    actorLineColor: '#9AA6C4',
+    signalColor: '#46536D',
+    signalTextColor: '#1F2937',
+    noteBkgColor: '#FFF4D6',
+    noteBorderColor: '#B7791F',
+    noteTextColor: '#1F2937',
+    labelBoxBkgColor: '#FFF4D6',
+    labelBoxBorderColor: '#B7791F',
+    loopTextColor: '#1F2937',
+    sequenceNumberColor: '#FFFFFF'
+  },
+  sequence: { mirrorActors: true, useMaxWidth: false, actorMargin: 30, messageMargin: 30 },
+  flowchart: { useMaxWidth: false, htmlLabels: false, curve: 'basis' }
+});
+
+function fitSvg(svg) {
+  const pad = 12;
+  const bb = svg.getBBox();
+  const w = Math.ceil(bb.width + pad * 2);
+  const h = Math.ceil(bb.height + pad * 2);
+  svg.setAttribute('viewBox', `${bb.x - pad} ${bb.y - pad} ${w} ${h}`);
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  svg.style.maxWidth = '100%';
+  svg.style.height = 'auto';
+}
+
+function pngBlob(svg, scale = 2) {
+  const clone = svg.cloneNode(true);
+  const w = +svg.getAttribute('width');
+  const h = +svg.getAttribute('height');
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.style.maxWidth = '';
+  const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone));
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = w * scale;
+      c.height = h * scale;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0, w, h);
+      c.toBlob(b => (b ? resolve(b) : reject(new Error('PNG'))), 'image/png');
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+for (const card of document.querySelectorAll('[data-diagram]')) {
+  const key = card.dataset.diagram;
+  const target = card.querySelector('.diagram');
+  try {
+    const { svg } = await mermaid.render(`svg-${key}`, D[key]);
+    target.innerHTML = svg;
+    const el = target.querySelector('svg');
+    fitSvg(el);
+    const btn = document.createElement('button');
+    btn.textContent = 'Descargar PNG';
+    btn.onclick = async () => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(await pngBlob(el));
+      a.download = `iOS-Tier2-${key}.png`;
+      a.click();
+    };
+    card.querySelector('.card-head').appendChild(btn);
+  } catch (e) {
+    target.textContent = 'Error al renderizar: ' + (e.message || e);
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>smp-device-integrity-service — Diagramas de secuencia</title>
+<style>
+  :root {
+    --brand: #001391;
+    --ink: #1F2937;
+    --muted: #46536D;
+    --line: #D6DCEB;
+    --bg: #F5F7FC;
+    --adjust: #B7791F;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+  }
+  header {
+    background: var(--brand);
+    color: #fff;
+    padding: 24px 40px;
+  }
+  header h1 { margin: 0 0 6px; font-size: 22px; }
+  header p { margin: 0; opacity: .85; font-size: 14px; }
+  main { max-width: 1500px; margin: 0 auto; padding: 24px 40px 60px; }
+  nav.toc {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+  nav.toc ol { margin: 8px 0 0; padding-left: 20px; columns: 2; }
+  nav.toc a { color: var(--brand); text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+  .adjustments {
+    background: #FFF8E6;
+    border: 1px solid #F1D49A;
+    border-left: 4px solid var(--adjust);
+    border-radius: 8px;
+    padding: 14px 20px;
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+  .adjustments h2 { margin: 0 0 8px; font-size: 15px; color: #7A4F0F; }
+  .adjustments ul { margin: 0; padding-left: 20px; }
+  .adjustments li { margin: 3px 0; }
+  .platform-title {
+    margin: 36px 0 12px;
+    font-size: 18px;
+    color: var(--brand);
+    border-bottom: 2px solid var(--brand);
+    padding-bottom: 6px;
+  }
+  .diagram-card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--line);
+    background: #FAFBFE;
+  }
+  .card-head h3 { margin: 0; font-size: 15px; }
+  .card-head p { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
+  .toolbar { display: flex; gap: 8px; flex-shrink: 0; }
+  .toolbar button {
+    border: 1px solid var(--brand);
+    background: #fff;
+    color: var(--brand);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+  .toolbar button:hover { background: var(--brand); color: #fff; }
+  .diagram {
+    padding: 16px;
+    overflow-x: auto;
+    text-align: center;
+  }
+  .diagram svg { max-width: 100%; }
+  .diagram .error { color: #B91C1C; font-family: monospace; white-space: pre-wrap; text-align: left; }
+  table.legend {
+    border-collapse: collapse;
+    background: #fff;
+    font-size: 13px;
+    width: 100%;
+    max-width: 900px;
+  }
+  table.legend th, table.legend td {
+    border: 1px solid var(--line);
+    padding: 7px 12px;
+    text-align: left;
+  }
+  table.legend th { background: var(--brand); color: #fff; font-weight: 600; }
+  table.legend code { font-size: 12.5px; }
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--ink);
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    opacity: 0;
+    transition: opacity .2s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<header>
+  <h1>smp-device-integrity-service — Diagramas de secuencia</h1>
+  <p>Validación de integridad del app Personas: Google Play Integrity, Huawei SysIntegrity y Apple App Attest · Tier 1 y Tier 2</p>
+</header>
+
+<main>
+  <nav class="toc">
+    <strong>Contenido</strong>
+    <ol id="toc"></ol>
+  </nav>
+
+  <section class="adjustments">
+    <h2>Ajustes incorporados respecto a propuesta_arquitectura_appsec_v2 (marcados como "Ajuste" en las notas)</h2>
+    <ul>
+      <li>APIM elimina cualquier <code>X-Integrity-Decision</code> enviado por el cliente antes de evaluar.</li>
+      <li>El servicio comprueba que la evidencia corresponda a la plataforma declarada en <code>X-INTEGRITY-PLATFORM</code> y a la registrada para el <code>deviceid</code>.</li>
+      <li>Android Tier 2 envía <code>requestHash</code> con los datos de la petición y un timestamp.</li>
+      <li>Huawei Tier 2 deriva el nonce de la petición y registra en Redis los nonces usados durante la ventana de frescura.</li>
+      <li>iOS Tier 2 recalcula el <code>clientDataHash</code> en el servicio. El counter se actualiza en Cosmos DB de forma condicional (ETag).</li>
+      <li>Los títulos de Tier 1 dicen "validación en APIM" y no "en el BFF", porque quien orquesta es APIM.</li>
+      <li>Hash de la operación: <code>SHA256(nonce | payload_canonico)</code>, con <code>payload_canonico = destination_account | amount | currency</code>.</li>
+    </ul>
+  </section>
+
+  <div id="diagrams"></div>
+
+  <h2 class="platform-title">Leyenda</h2>
+  <table class="legend">
+    <thead><tr><th>Notación</th><th>Significado</th></tr></thead>
+    <tbody>
+      <tr><td><code>participant</code></td><td>Sistema o componente (app, APIM, servicio, almacén, proveedor)</td></tr>
+      <tr><td>Flecha sólida <code>-&gt;&gt;</code></td><td>Llamada síncrona</td></tr>
+      <tr><td>Flecha punteada <code>--&gt;&gt;</code></td><td>Respuesta</td></tr>
+      <tr><td>Bloque <code>alt / else</code></td><td>Caminos alternativos según la decisión</td></tr>
+      <tr><td>Nota "Ajuste"</td><td>Control agregado sobre el documento original</td></tr>
+      <tr><td>Número en círculo</td><td>Orden del paso (<code>autonumber</code>)</td></tr>
+      <tr><td>ALLOW / DEGRADED / DENY / SKIPPED</td><td>Valores de <code>X-Integrity-Decision</code> que APIM entrega al backend</td></tr>
+    </tbody>
+  </table>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
+
+const DIAGRAMS = [
+  {
+    group: 'Google Play Integrity (Android)',
+    id: 'android-warmup',
+    title: '1. Android: preparación del proveedor (warm-up)',
+    desc: 'Se ejecuta al iniciar la app. Tier 1 y Tier 2 reutilizan el proveedor preparado.',
+    code: `sequenceDiagram
+    autonumber
+    participant App as App Android
+    participant GPS as Google Play Services
+    App->>GPS: prepareIntegrityToken (warm-up al iniciar la app)
+    GPS-->>App: StandardIntegrityTokenProvider preparado
+    Note over App,GPS: No solicita challenge ni genera el token de una operación`
+  },
+  {
+    group: 'Google Play Integrity (Android)',
+    id: 'android-tier1',
+    title: '2. Android Tier 1: challenge y requestHash (validación en APIM)',
+    desc: 'Operaciones críticas. Challenge del backend de un solo uso con TTL de 120 s, ligado a la operación.',
+    code: `sequenceDiagram
+    autonumber
+    participant App as App Android
+    participant GPS as Google Play Services
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    participant R as Redis (challenges)
+    participant G as Google decodeIntegrityToken
+    participant BE as Backend de negocio
+    App->>APIM: POST /deviceintegrity/initiate (platform android, operation)
+    APIM->>INT: Ruta interna
+    INT->>R: Guarda nonce 128 bits + contexto (TTL 120 s, un solo uso)
+    INT-->>APIM: challengeId, challenge, expiresAt
+    APIM-->>App: challengeId, challenge, expiresAt
+    App->>App: requestHash = SHA256(challenge | payload canónico)
+    App->>GPS: request(requestHash)
+    GPS-->>App: integrityToken
+    App->>APIM: POST operación + X-TOKEN-INTEGRITY + X-INTEGRITY-PLATFORM android + X-INTEGRITY-CHALLENGE-ID
+    Note over APIM: Ajuste: elimina X-Integrity-Decision enviado por el cliente
+    APIM->>APIM: Resuelve Tier 1 y forma payload canónico sin nonce
+    APIM->>INT: POST /deviceintegrity/evaluate/transaction (token, plataforma, challengeId, payload canónico)
+    INT->>R: Lee, valida y consume challenge (atómico)
+    alt NOT_FOUND, EXPIRED o ALREADY_USED
+        INT-->>APIM: DENY NONCE_INVALID o NONCE_REPLAYED
+        APIM-->>App: 403 Forbidden
+    else Challenge válido
+        INT->>G: decodeIntegrityToken
+        G-->>INT: payload (requestDetails, appIntegrity, deviceIntegrity)
+        INT->>INT: Calcula SHA256(nonce | payload canónico) y compara con requestHash
+        INT->>INT: Valida package, timestamp, PLAY_RECOGNIZED y MEETS_DEVICE_INTEGRITY
+        Note over INT: Ajuste: valida que la evidencia corresponda a la plataforma declarada
+        INT-->>APIM: decision + enforcement.mode
+        alt ALLOW
+            APIM->>BE: Reenvía operación + X-Integrity-Decision ALLOW
+            BE-->>APIM: Respuesta
+            APIM-->>App: Respuesta
+        else DEGRADED con controles aprobados
+            APIM->>BE: Reenvía operación + X-Integrity-Decision DEGRADED
+            BE-->>APIM: Respuesta según controles de negocio
+            APIM-->>App: Respuesta
+        else DENY
+            APIM-->>App: 403 Forbidden
+        end
+    end`
+  },
+  {
+    group: 'Google Play Integrity (Android)',
+    id: 'android-tier2',
+    title: '3. Android Tier 2: sin challenge (validación en APIM, policy fragment)',
+    desc: 'Operaciones de menor criticidad. Standard request sin challenge del backend.',
+    code: `sequenceDiagram
+    autonumber
+    participant App as App Android
+    participant GPS as Google Play Services
+    participant APIM as APIM (policy fragment)
+    participant INT as smp-device-integrity-service
+    participant G as Google decodeIntegrityToken
+    participant BE as Backend de negocio
+    App->>App: requestHash = SHA256(método | ruta | cuerpo | timestamp)
+    Note over App: Ajuste: el documento original no envía requestHash en Tier 2
+    App->>GPS: request Standard (requestHash)
+    GPS-->>App: integrityToken
+    App->>APIM: Request + X-TOKEN-INTEGRITY + X-INTEGRITY-PLATFORM android + X-INTEGRITY-TIMESTAMP
+    Note over APIM: Ajuste: elimina X-Integrity-Decision enviado por el cliente
+    APIM->>INT: POST /deviceintegrity/evaluate/posture (token, plataforma, resumen de la petición)
+    INT->>G: decodeIntegrityToken
+    G-->>INT: payload (requestDetails, appIntegrity, deviceIntegrity)
+    INT->>INT: Valida package, timestamp, requestHash y veredictos
+    INT-->>APIM: ALLOW, DEGRADED o DENY
+    alt ALLOW
+        APIM->>BE: Reenvía la request + X-Integrity-Decision ALLOW
+        BE-->>APIM: Respuesta
+        APIM-->>App: Respuesta
+    else DEGRADED
+        APIM->>BE: Reenvía la request + X-Integrity-Decision DEGRADED
+        BE-->>APIM: Respuesta según restricciones
+        APIM-->>App: Respuesta
+    else DENY
+        APIM-->>App: 403 Forbidden
+    end`
+  },
+  {
+    group: 'Huawei Safety Detect: SysIntegrity (HMS)',
+    id: 'huawei-tier1',
+    title: '4. Huawei Tier 1: challenge emitido por el servidor (validación en APIM)',
+    desc: 'Se compara el campo nonce del JWS contra SHA256(challenge | payload canónico).',
+    code: `sequenceDiagram
+    autonumber
+    participant App as App Huawei
+    participant HMS as HMS Safety Detect
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    participant R as Redis (challenges)
+    participant BE as Backend de negocio
+    App->>APIM: POST /deviceintegrity/initiate (platform huawei, operation)
+    APIM->>INT: Ruta interna
+    INT->>R: Guarda nonce 128 bits + contexto (TTL 120 s, un solo uso)
+    INT-->>APIM: challengeId, challenge, expiresAt
+    APIM-->>App: challengeId, challenge, expiresAt
+    App->>App: nonce = SHA256(challenge | destination_account | amount | currency)
+    App->>HMS: sysIntegrity(nonce, appId)
+    HMS-->>App: JWS
+    App->>APIM: POST operación + X-TOKEN-INTEGRITY (JWS) + X-INTEGRITY-PLATFORM huawei + X-INTEGRITY-CHALLENGE-ID
+    Note over APIM: Ajuste: elimina X-Integrity-Decision enviado por el cliente
+    APIM->>APIM: Resuelve Tier 1 y forma payload canónico sin nonce
+    APIM->>INT: POST /deviceintegrity/evaluate/transaction (JWS, plataforma, challengeId, payload canónico)
+    INT->>R: Lee, valida y consume challenge (atómico)
+    alt NOT_FOUND, EXPIRED o ALREADY_USED
+        INT-->>APIM: DENY NONCE_INVALID o NONCE_REPLAYED
+        APIM-->>App: 403 Forbidden
+    else Challenge válido
+        INT->>INT: Verifica firma del JWS y cadena de certificados de Huawei
+        INT->>INT: Calcula SHA256(nonce | payload canónico) y compara con el nonce del JWS
+        INT->>INT: Valida apkPackageName, certDigest, timestamp, basicIntegrity y evaluationType
+        INT-->>APIM: decision + enforcement.mode
+        alt ALLOW
+            APIM->>BE: Reenvía operación + X-Integrity-Decision ALLOW
+            BE-->>APIM: Respuesta
+            APIM-->>App: Respuesta
+        else DEGRADED con controles aprobados
+            APIM->>BE: Reenvía operación + X-Integrity-Decision DEGRADED
+            BE-->>APIM: Respuesta según controles de negocio
+            APIM-->>App: Respuesta
+        else DENY
+            APIM-->>App: 403 Forbidden
+        end
+    end`
+  },
+  {
+    group: 'Huawei Safety Detect: SysIntegrity (HMS)',
+    id: 'huawei-tier2',
+    title: '5. Huawei Tier 2: nonce derivado de la petición (validación en APIM, policy fragment)',
+    desc: 'Sin challenge del backend. Ajuste: el nonce se deriva de la petición y se registra para evitar replay.',
+    code: `sequenceDiagram
+    autonumber
+    participant App as App Huawei
+    participant HMS as HMS Safety Detect
+    participant APIM as APIM (policy fragment)
+    participant INT as smp-device-integrity-service
+    participant R as Redis
+    participant BE as Backend de negocio
+    App->>App: nonce = SHA256(método | ruta | cuerpo | timestamp)
+    Note over App: Ajuste: el documento original usa un nonce aleatorio local
+    App->>HMS: sysIntegrity(nonce, appId)
+    HMS-->>App: JWS
+    App->>APIM: Request + X-TOKEN-INTEGRITY (JWS) + X-INTEGRITY-PLATFORM huawei + X-INTEGRITY-TIMESTAMP
+    Note over APIM: Ajuste: elimina X-Integrity-Decision enviado por el cliente
+    APIM->>INT: POST /deviceintegrity/evaluate/posture (JWS, plataforma, resumen de la petición)
+    INT->>INT: Verifica firma, cadena, timestamp (frescura), package, certDigest y basicIntegrity
+    INT->>INT: Recalcula el nonce y lo compara con el del JWS
+    INT->>R: SET NX nonce usado (TTL = ventana de frescura)
+    alt Nonce ya usado
+        INT-->>APIM: DENY NONCE_REPLAYED
+        APIM-->>App: 403 Forbidden
+    else Nonce nuevo
+        INT-->>APIM: ALLOW, DEGRADED o DENY
+        alt ALLOW
+            APIM->>BE: Reenvía la request + X-Integrity-Decision ALLOW
+            BE-->>APIM: Respuesta
+            APIM-->>App: Respuesta
+        else DEGRADED
+            APIM->>BE: Reenvía la request + X-Integrity-Decision DEGRADED
+            BE-->>APIM: Respuesta según restricciones
+            APIM-->>App: Respuesta
+        else DENY
+            APIM-->>App: 403 Forbidden
+        end
+    end`
+  },
+  {
+    group: 'Apple App Attest (iOS)',
+    id: 'ios-enroll',
+    title: '6. iOS: enrolamiento (común a Tier 1 y Tier 2)',
+    desc: 'Una vez por instalación y siempre con challenge propio. Apple no se consulta; se valida con su certificado raíz.',
+    code: `sequenceDiagram
+    autonumber
+    participant App as App iOS
+    participant SE as Secure Enclave + Apple
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    participant R as Redis (challenges)
+    participant C as Cosmos DB (keyId, pubkey, counter)
+    App->>SE: generateKey()
+    SE-->>App: keyId
+    App->>APIM: POST /deviceintegrity/initiate (platform ios, purpose enroll)
+    APIM->>INT: Ruta interna
+    INT->>R: Guarda nonce + contexto (TTL 120 s, un solo uso)
+    INT-->>APIM: challengeId, challenge, expiresAt
+    APIM-->>App: challengeId, challenge, expiresAt
+    App->>SE: attestKey(keyId, SHA256(challenge))
+    SE-->>App: attestation (CBOR)
+    App->>APIM: POST /deviceintegrity/ios/enroll (keyId, attestation, challengeId)
+    APIM->>INT: Ruta interna
+    INT->>R: Lee, valida y consume challenge (atómico)
+    alt NOT_FOUND, EXPIRED o ALREADY_USED
+        INT-->>APIM: DENY NONCE_INVALID o NONCE_REPLAYED
+        APIM-->>App: 403 Forbidden
+    else Challenge válido
+        INT->>INT: Valida cadena Apple, nonce, keyId, rpIdHash, AAGUID y counter 0
+        INT->>C: Guarda keyId, clave pública, counter 0, usuario y plataforma
+        INT-->>APIM: Enrolado
+        APIM-->>App: Enrolado
+    end`
+  },
+  {
+    group: 'Apple App Attest (iOS)',
+    id: 'ios-tier1',
+    title: '7. iOS Tier 1: assertion con challenge y hash de la operación (validación en APIM)',
+    desc: 'clientDataHash = SHA256(challenge | payload canónico). Counter estrictamente creciente.',
+    code: `sequenceDiagram
+    autonumber
+    participant App as App iOS
+    participant SE as Secure Enclave
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    participant R as Redis (challenges)
+    participant C as Cosmos DB
+    participant BE as Backend de negocio
+    App->>APIM: POST /deviceintegrity/initiate (platform ios, operation)
+    APIM->>INT: Ruta interna
+    INT->>R: Guarda nonce + contexto (TTL 120 s, un solo uso)
+    INT-->>APIM: challengeId, challenge, expiresAt
+    APIM-->>App: challengeId, challenge, expiresAt
+    App->>App: clientDataHash = SHA256(challenge | payload canónico)
+    App->>SE: generateAssertion(keyId, clientDataHash)
+    SE-->>App: assertion
+    App->>APIM: POST operación + X-TOKEN-INTEGRITY (assertion) + X-INTEGRITY-KEY-ID + X-INTEGRITY-CHALLENGE-ID + X-INTEGRITY-PLATFORM ios
+    Note over APIM: Ajuste: elimina X-Integrity-Decision enviado por el cliente
+    APIM->>APIM: Resuelve Tier 1 y forma payload canónico sin nonce
+    APIM->>INT: POST /deviceintegrity/evaluate/transaction (assertion, keyId, challengeId, payload canónico)
+    INT->>R: Lee, valida y consume challenge (atómico)
+    alt NOT_FOUND, EXPIRED o ALREADY_USED
+        INT-->>APIM: DENY NONCE_INVALID o NONCE_REPLAYED
+        APIM-->>App: 403 Forbidden
+    else Challenge válido
+        INT->>C: Lee clave pública y counter
+        INT->>INT: Calcula clientDataHash, verifica firma, rpIdHash y counter mayor al guardado
+        INT->>C: Actualiza counter (condicional con ETag)
+        Note over INT,C: Ajuste: la escritura condicional evita que dos assertions pasen con el mismo counter
+        INT-->>APIM: decision + enforcement.mode
+        alt ALLOW
+            APIM->>BE: Reenvía operación + X-Integrity-Decision ALLOW
+            BE-->>APIM: Respuesta
+            APIM-->>App: Respuesta
+        else DEGRADED con controles aprobados
+            APIM->>BE: Reenvía operación + X-Integrity-Decision DEGRADED
+            BE-->>APIM: Respuesta según controles de negocio
+            APIM-->>App: Respuesta
+        else DENY
+            APIM-->>App: 403 Forbidden
+        end
+    end`
+  },
+  {
+    group: 'Apple App Attest (iOS)',
+    id: 'ios-tier2',
+    title: '8. iOS Tier 2: assertion sin challenge por request (validación en APIM, policy fragment)',
+    desc: 'El counter da la protección contra replay. Ajuste: el servicio recalcula clientDataHash con la petición real.',
+    code: `sequenceDiagram
+    autonumber
+    participant App as App iOS
+    participant SE as Secure Enclave
+    participant APIM as APIM (policy fragment)
+    participant INT as smp-device-integrity-service
+    participant C as Cosmos DB
+    participant BE as Backend de negocio
+    App->>App: clientDataHash = SHA256(datos de la petición + timestamp)
+    App->>SE: generateAssertion(keyId, clientDataHash)
+    SE-->>App: assertion
+    App->>APIM: Request + X-TOKEN-INTEGRITY (assertion) + X-INTEGRITY-KEY-ID + X-INTEGRITY-PLATFORM ios + X-INTEGRITY-TIMESTAMP
+    Note over APIM: Ajuste: elimina X-Integrity-Decision enviado por el cliente
+    APIM->>INT: POST /deviceintegrity/evaluate/posture (assertion, keyId, resumen de la petición)
+    INT->>C: Lee clave pública y counter
+    INT->>INT: Recalcula clientDataHash y verifica firma, rpIdHash, frescura y counter mayor al guardado
+    INT->>C: Actualiza counter (condicional con ETag)
+    INT-->>APIM: ALLOW, DEGRADED o DENY
+    alt ALLOW
+        APIM->>BE: Reenvía la request + X-Integrity-Decision ALLOW
+        BE-->>APIM: Respuesta
+        APIM-->>App: Respuesta
+    else DEGRADED
+        APIM->>BE: Reenvía la request + X-Integrity-Decision DEGRADED
+        BE-->>APIM: Respuesta según restricciones
+        APIM-->>App: Respuesta
+    else DENY
+        APIM-->>App: 403 Forbidden
+    end`
+  },
+  {
+    group: 'Decisión, enforcement y kill switch',
+    id: 'decision',
+    title: '9. Decisión y enforcement en APIM',
+    desc: 'Named Values allowintegrityverify (global) y allowintegrityverify{android|huawei|ios}, con valor por defecto true. Modo ENFORCE o MONITOR en configuración externa.',
+    code: `flowchart TD
+    A([Request con X-TOKEN-INTEGRITY]) --> A1[Ajuste: APIM elimina X-Integrity-Decision del cliente]
+    A1 --> B{allowintegrityverify global y de la plataforma}
+    B -- false, emergencia aprobada --> C[APIM reenvía sin validar con X-Integrity-Decision SKIPPED]
+    B -- true, ausente o inválido --> E[smp-device-integrity-service evalúa evidencia y política]
+    E -- timeout o error --> F[APIM aplica fail-open o fail-closed según la operación]
+    E --> G{Evidencia técnicamente válida}
+    G -- No: firma, challenge, hash, identidad o counter --> X[403 Forbidden]
+    G -- Sí --> H{Modo en configuración externa}
+    H -- MONITOR --> I[Registra incumplimientos de postura y devuelve ALLOW]
+    H -- ENFORCE --> J{Decisión}
+    J -- ALLOW --> K[Reenvía con X-Integrity-Decision ALLOW]
+    J -- DEGRADED --> L[Reenvía con X-Integrity-Decision DEGRADED, sesión corta y postura UNVERIFIED]
+    J -- DENY --> X
+    I --> K
+    classDef deny fill:#FDE2E2,stroke:#B91C1C,color:#7F1D1D
+    classDef ok fill:#DCFCE7,stroke:#15803D,color:#14532D
+    classDef warn fill:#FFF4D6,stroke:#B7791F,color:#7A4F0F
+    class X deny
+    class K ok
+    class L,C,F,A1 warn`
+  }
+];
+
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  securityLevel: 'loose',
+  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  themeVariables: {
+    primaryColor: '#EEF2FF',
+    primaryBorderColor: '#001391',
+    primaryTextColor: '#001391',
+    lineColor: '#46536D',
+    actorBkg: '#EEF2FF',
+    actorBorder: '#001391',
+    actorTextColor: '#001391',
+    actorLineColor: '#9AA6C4',
+    signalColor: '#46536D',
+    signalTextColor: '#1F2937',
+    noteBkgColor: '#D4DFFF',
+    noteBorderColor: '#001391',
+    noteTextColor: '#1F2937',
+    labelBoxBkgColor: '#FFF4D6',
+    labelBoxBorderColor: '#B7791F',
+    labelTextColor: '#7A4F0F',
+    loopTextColor: '#1F2937',
+    sequenceNumberColor: '#FFFFFF',
+    fontSize: '14px'
+  },
+  sequence: {
+    mirrorActors: true,
+    useMaxWidth: false,
+    actorMargin: 45,
+    messageMargin: 32,
+    noteMargin: 10,
+    boxMargin: 8,
+    wrap: false
+  },
+  flowchart: {
+    useMaxWidth: false,
+    htmlLabels: false,
+    curve: 'basis'
+  }
+});
+
+const toc = document.getElementById('toc');
+const container = document.getElementById('diagrams');
+let currentGroup = null;
+
+for (const d of DIAGRAMS) {
+  if (d.group !== currentGroup) {
+    currentGroup = d.group;
+    const h = document.createElement('h2');
+    h.className = 'platform-title';
+    h.textContent = d.group;
+    container.appendChild(h);
+  }
+  const card = document.createElement('section');
+  card.className = 'diagram-card';
+  card.id = d.id;
+  card.innerHTML = `
+    <div class="card-head">
+      <div><h3></h3><p></p></div>
+      <div class="toolbar">
+        <button data-action="png">Descargar PNG</button>
+        <button data-action="copy-img">Copiar imagen</button>
+        <button data-action="copy-code">Copiar código Mermaid</button>
+      </div>
+    </div>
+    <div class="diagram"></div>`;
+  card.querySelector('h3').textContent = d.title;
+  card.querySelector('p').textContent = d.desc;
+  card.querySelector('[data-action="png"]').onclick = () => downloadPng(d);
+  card.querySelector('[data-action="copy-img"]').onclick = () => copyImage(d);
+  card.querySelector('[data-action="copy-code"]').onclick = () => copyCode(d);
+  container.appendChild(card);
+
+  const li = document.createElement('li');
+  li.innerHTML = `<a href="#${d.id}"></a>`;
+  li.querySelector('a').textContent = d.title;
+  toc.appendChild(li);
+}
+
+function fitSvg(svg) {
+  const pad = 16;
+  const bb = svg.getBBox();
+  const w = Math.ceil(bb.width + pad * 2);
+  const h = Math.ceil(bb.height + pad * 2);
+  svg.setAttribute('viewBox', `${bb.x - pad} ${bb.y - pad} ${w} ${h}`);
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  svg.style.maxWidth = '100%';
+  svg.style.height = 'auto';
+}
+
+for (const d of DIAGRAMS) {
+  const target = document.querySelector(`#${d.id} .diagram`);
+  try {
+    const { svg } = await mermaid.render(`svg-${d.id}`, d.code);
+    target.innerHTML = svg;
+    fitSvg(target.querySelector('svg'));
+  } catch (err) {
+    target.innerHTML = `<div class="error"></div>`;
+    target.firstChild.textContent = `Error al renderizar: ${err.message || err}`;
+  }
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+function svgToPngBlob(d, scale = 2) {
+  const svg = document.querySelector(`#${d.id} .diagram svg`);
+  const clone = svg.cloneNode(true);
+  const w = Number(svg.getAttribute('width'));
+  const h = Number(svg.getAttribute('height'));
+  clone.setAttribute('width', w);
+  clone.setAttribute('height', h);
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.style.maxWidth = '';
+  const data = new XMLSerializer().serializeToString(clone);
+  const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(data);
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = w * scale;
+      canvas.height = h * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(b => (b ? resolve(b) : reject(new Error('No se pudo generar el PNG'))), 'image/png');
+    };
+    img.onerror = () => reject(new Error('No se pudo cargar el SVG'));
+    img.src = url;
+  });
+}
+
+async function downloadPng(d) {
+  try {
+    const blob = await svgToPngBlob(d);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `DeviceIntegrity-${d.id}.png`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } catch (e) {
+    toast(e.message);
+  }
+}
+
+async function copyImage(d) {
+  try {
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': svgToPngBlob(d) })]);
+    toast('Imagen copiada');
+  } catch (e) {
+    toast('No se pudo copiar la imagen: ' + e.message);
+  }
+}
+
+async function copyCode(d) {
+  try {
+    await navigator.clipboard.writeText(d.code);
+    toast('Código Mermaid copiado');
+  } catch (e) {
+    toast('No se pudo copiar el código');
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Android Tier 2: requestHash — explicación</title>
+<style>
+  :root {
+    --brand: #001391;
+    --ink: #1F2937;
+    --muted: #46536D;
+    --line: #D6DCEB;
+    --bg: #F5F7FC;
+    --bad: #B91C1C;
+    --bad-bg: #FDECEC;
+    --good: #15803D;
+    --good-bg: #E8F7EE;
+    --warn: #B7791F;
+    --warn-bg: #FFF8E6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.55;
+  }
+  header { background: var(--brand); color: #fff; padding: 28px 40px; }
+  header h1 { margin: 0 0 6px; font-size: 24px; }
+  header p { margin: 0; opacity: .88; max-width: 900px; }
+  header code { background: rgba(255,255,255,.15); color: #fff; }
+  main { max-width: 1200px; margin: 0 auto; padding: 24px 40px 60px; }
+  h2 { color: var(--brand); border-bottom: 2px solid var(--brand); padding-bottom: 6px; margin-top: 44px; }
+  h3 { margin: 26px 0 8px; }
+  p, li { font-size: 15px; }
+  code { background: #EEF2FF; padding: 1px 5px; border-radius: 4px; font-size: 13.5px; }
+  pre {
+    background: #0F172A;
+    color: #E2E8F0;
+    padding: 16px 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+  .callout {
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    border: 1px solid;
+    border-left-width: 5px;
+  }
+  .callout.bad { background: var(--bad-bg); border-color: #F5C2C2; border-left-color: var(--bad); }
+  .callout.good { background: var(--good-bg); border-color: #BDE5CB; border-left-color: var(--good); }
+  .callout.warn { background: var(--warn-bg); border-color: #F1D49A; border-left-color: var(--warn); }
+  .callout > strong:first-child { display: block; margin-bottom: 4px; }
+  .card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin: 16px 0 24px;
+    overflow: hidden;
+  }
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line);
+    background: #FAFBFE;
+    gap: 12px;
+  }
+  .card-head h4 { margin: 0; font-size: 14.5px; }
+  .tag { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+  .tag.bad { background: var(--bad-bg); color: var(--bad); }
+  .tag.good { background: var(--good-bg); color: var(--good); }
+  .tag.neutral { background: #EEF2FF; color: var(--brand); }
+  .card-head button {
+    border: 1px solid var(--brand);
+    background: #fff;
+    color: var(--brand);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .card-head button:hover { background: var(--brand); color: #fff; }
+  .diagram { padding: 16px; overflow-x: auto; text-align: center; }
+  .diagram svg { max-width: 100%; height: auto; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+  table { border-collapse: collapse; width: 100%; background: #fff; font-size: 14px; margin: 12px 0; }
+  th, td { border: 1px solid var(--line); padding: 9px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--brand); color: #fff; }
+  td.yes { color: var(--good); font-weight: 600; }
+  td.no { color: var(--bad); font-weight: 600; }
+  td.part { color: var(--warn); font-weight: 600; }
+  .analogy {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin: 14px 0;
+  }
+  @media (max-width: 900px) { .analogy { grid-template-columns: 1fr; } }
+  .analogy div {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-size: 14px;
+  }
+  .analogy div b { display: block; color: var(--brand); margin-bottom: 4px; }
+  .box {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 16px;
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .box .hl { background: #FDE2E2; color: var(--bad); font-weight: 700; }
+  .box .ok { background: #DCFCE7; color: var(--good); font-weight: 700; }
+  .box .dim { color: var(--muted); }
+  .tldr {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Android Tier 2: ¿por qué hace falta <code>requestHash</code> aunque no haya challenge?</h1>
+  <p>Explicación del riesgo en el flujo "Tier 2, sin challenge" de Google Play Integrity en <code>smp-device-integrity-service</code>, y de la validación de <code>requestHash</code>, <code>timestampMillis</code> y <code>requestPackageName</code>.</p>
+</header>
+
+<main>
+
+<section class="tldr">
+  <strong>En una frase:</strong> el token de Play Integrity dice "este dispositivo y esta app son legítimos", pero si se pide sin <code>requestHash</code> no dice <em>para qué petición</em>. El servicio no puede detectar que el token se usó en una petición modificada o armada por un bot.
+  <p style="margin:10px 0 0">La corrección tiene tres partes. La app pone <code>SHA256(método | ruta | SHA256(cuerpo) | deviceid | timestamp)</code> en el <code>requestHash</code>. El servicio recalcula ese hash con la petición real. Y el servicio valida <code>timestampMillis</code> (frescura) y <code>requestPackageName</code> (nuestra app).</p>
+</section>
+
+<h2>1. La idea con una analogía</h2>
+<div class="analogy">
+  <div><b>El token es un certificado médico</b>Dice "esta persona está sana", firmado por un médico de confianza (Google). Es auténtico.</div>
+  <div><b>Sin requestHash</b>El certificado no dice para qué trámite es. Sirve para cualquier ventanilla, y cualquiera que lo tenga puede presentarlo.</div>
+  <div><b>Con requestHash</b>El certificado dice "válido para el trámite 7F3A..., emitido a las 10:00". Si lo presentas en otro trámite o al día siguiente, se rechaza.</div>
+</div>
+
+<h2>2. Qué trae el token de Play Integrity</h2>
+<p>Al descifrarlo con <code>decodeIntegrityToken</code>, el servicio recibe algo así:</p>
+<div class="box">{
+  "requestDetails": {
+    "requestPackageName": "pe.ibk.personas",   <span class="ok">← debe ser nuestra app</span>
+    "requestHash": "",                          <span class="hl">← vacío hoy en Tier 2: el token no está ligado a nada</span>
+    "timestampMillis": "1762292400000"          <span class="ok">← cuándo se generó; hay que validarlo</span>
+  },
+  "appIntegrity":    { "appRecognitionVerdict": "PLAY_RECOGNIZED", "packageName": "pe.ibk.personas", ... },
+  "deviceIntegrity": { "deviceRecognitionVerdict": ["MEETS_DEVICE_INTEGRITY"] },
+  "accountDetails":  { ... }
+}</div>
+<p>Las tres partes de <code>requestDetails</code> responden a preguntas distintas:</p>
+<table>
+  <thead><tr><th>Campo</th><th>Pregunta que responde</th><th>Si no se valida</th></tr></thead>
+  <tbody>
+    <tr><td><code>requestHash</code></td><td>¿Este token se pidió para <strong>esta</strong> petición?</td><td>El token sirve para cualquier petición: se puede modificar el cuerpo o trasplantar el token a un bot.</td></tr>
+    <tr><td><code>timestampMillis</code></td><td>¿Se pidió <strong>hace poco</strong>?</td><td>Un token sano de hace horas o días sigue sirviendo.</td></tr>
+    <tr><td><code>requestPackageName</code></td><td>¿Lo pidió <strong>nuestra</strong> app?</td><td>Se aceptan tokens pedidos desde otra app. Es una defensa en profundidad, junto con <code>appIntegrity</code>.</td></tr>
+  </tbody>
+</table>
+
+<div class="callout warn">
+  <strong>Qué dice Google</strong>
+  En las <em>standard requests</em>, el <code>requestHash</code> es el mecanismo previsto para proteger la petición contra manipulación. Google recomienda llenarlo con un resumen de los datos relevantes de la acción, también cuando no hay challenge del servidor. La documentación también menciona una mitigación automática de replay en este tipo de petición, pero <strong>no liga el token a una petición concreta</strong>: eso solo lo hace el <code>requestHash</code>.
+</div>
+
+<h2>3. Cómo está en el documento</h2>
+<div class="card" data-diagram="doc">
+  <div class="card-head"><h4>Android Tier 2 hoy: "request Standard sin requestHash transaccional"</h4><span class="tag neutral">Referencia</span></div>
+  <div class="diagram"></div>
+</div>
+
+<h2>4. Cómo sucedería el ataque</h2>
+
+<h3>4.1 Ataque A: modificar la petición después de obtener el token</h3>
+<p>El atacante usa la app real en un Android sano, así que el token sale limpio. Pero pone un proxy entre la app y APIM y cambia el cuerpo de la petición. Como el token no lleva ningún hash de la petición, el servicio no tiene con qué detectar el cambio.</p>
+<div class="box">POST /beneficiaries/add                 <span class="dim">(Tier 2)</span>
+X-TOKEN-INTEGRITY: eyJhbGciOiJBMjU2S1ci...   <span class="dim">(token sano, sin requestHash)</span>
+X-INTEGRITY-PLATFORM: android
+
+{"alias":"mamá","account":"<span class="hl">ATACANTE-0099</span>"}    <span class="dim">← la app había enviado "...-1234"</span></div>
+
+<div class="card" data-diagram="attack-tamper">
+  <div class="card-head"><h4>Ataque A: el proxy cambia el cuerpo y el token sigue siendo válido</h4><span class="tag bad">Vulnerable</span></div>
+  <div class="diagram"></div>
+</div>
+
+<h3>4.2 Ataque B: tokens de un teléfono sano usados por un bot</h3>
+<p>El atacante tiene un Android sano que genera tokens limpios. Un bot, un emulador o un teléfono rooteado (que por sí solos no pasarían <code>MEETS_DEVICE_INTEGRITY</code>) arma las peticiones y les pega esos tokens. Como el token no está ligado a la petición, el servicio solo ve "token válido de un dispositivo sano".</p>
+<div class="card" data-diagram="attack-farm">
+  <div class="card-head"><h4>Ataque B: un teléfono sano como fábrica de tokens para un bot</h4><span class="tag bad">Vulnerable</span></div>
+  <div class="diagram"></div>
+</div>
+
+<h3>4.3 Ataque C: tokens viejos</h3>
+<p>Si el servicio no compara <code>timestampMillis</code> con la hora actual, el atacante puede guardar tokens sanos y usarlos horas después, incluso cuando el dispositivo ya está rooteado o comprometido. El veredicto describe el dispositivo <em>al momento de generar el token</em>, no al momento de usarlo.</p>
+
+<div class="callout bad">
+  <strong>Resultado</strong>
+  Sin <code>requestHash</code> ni control de frescura, Android Tier 2 solo prueba que "existe un Android sano en algún lado", no que "esta petición viene de la app legítima, sin modificar y ahora". Es el mismo hueco que iOS Tier 2 sin recalcular el <code>clientDataHash</code>.
+</div>
+
+<h2>5. La corrección</h2>
+<h3>5.1 Qué cambia</h3>
+<ol>
+  <li><strong>La app</strong> calcula el hash con los datos de la petición y un timestamp, y lo pasa en <code>setRequestHash(...)</code>. Envía el token y el timestamp, pero no el hash.</li>
+  <li><strong>APIM</strong> envía al servicio el resumen de la petición que recibió: método, ruta, <code>SHA256(cuerpo)</code>, <code>deviceid</code> y timestamp.</li>
+  <li><strong>El servicio</strong>, después de descifrar el token:
+    <ul>
+      <li>recalcula el hash con la petición recibida y lo compara con <code>requestDetails.requestHash</code>;</li>
+      <li>comprueba que <code>timestampMillis</code> y el timestamp de la petición estén dentro de la ventana de frescura;</li>
+      <li>comprueba que <code>requestPackageName</code> y <code>appIntegrity.packageName</code> sean <code>pe.ibk.personas</code>;</li>
+      <li>valida los veredictos aceptables: <code>PLAY_RECOGNIZED</code> y <code>MEETS_DEVICE_INTEGRITY</code>.</li>
+    </ul>
+  </li>
+</ol>
+<pre><code>requestHash = SHA256( método | ruta | SHA256(cuerpo) | deviceid | timestamp )   // 64 caracteres hex, menos que el máximo de 500 de Google</code></pre>
+<p>El costo es bajo: el proveedor ya está preparado por el warm-up, así que pedir el token con <code>requestHash</code> tarda lo mismo que sin él. Calcular un SHA256 es despreciable.</p>
+
+<div class="card" data-diagram="fixed">
+  <div class="card-head"><h4>Flujo corregido: requestHash ligado a la petición</h4><span class="tag good">Mitigado</span></div>
+  <div class="diagram"></div>
+</div>
+
+<h3>5.2 Qué pasa ahora con los ataques</h3>
+<div class="grid2">
+  <div class="card" data-diagram="fixed-tamper">
+    <div class="card-head"><h4>Ataque A: cuerpo modificado</h4><span class="tag good">Bloqueado</span></div>
+    <div class="diagram"></div>
+  </div>
+  <div class="card" data-diagram="fixed-farm">
+    <div class="card-head"><h4>Ataque B y C: token de otra petición o viejo</h4><span class="tag good">Bloqueado</span></div>
+    <div class="diagram"></div>
+  </div>
+</div>
+
+<h2>6. Qué cubre cada control</h2>
+<table>
+  <thead><tr><th>Intento del atacante</th><th>Solo veredictos (documento)</th><th>+ requestHash</th><th>+ timestampMillis</th><th>+ requestPackageName</th></tr></thead>
+  <tbody>
+    <tr><td>Ataque A: modificar el cuerpo</td><td class="no">Pasa</td><td class="yes">Bloqueado</td><td class="yes">Bloqueado</td><td class="yes">Bloqueado</td></tr>
+    <tr><td>Ataque B: trasplantar el token a un bot</td><td class="no">Pasa</td><td class="yes">Bloqueado</td><td class="yes">Bloqueado</td><td class="yes">Bloqueado</td></tr>
+    <tr><td>Ataque C: token de hace horas</td><td class="no">Pasa</td><td class="part">Pasa si el bot reproduce la misma petición</td><td class="yes">Bloqueado</td><td class="yes">Bloqueado</td></tr>
+    <tr><td>Token pedido desde otra app</td><td class="part">Depende de cómo se descifre</td><td class="part">Igual</td><td class="part">Igual</td><td class="yes">Bloqueado</td></tr>
+    <tr><td>La misma petición idéntica, reenviada dentro de la ventana</td><td class="part">Mitigación automática de Google</td><td class="part">Igual</td><td class="part">Reduce la ventana</td><td class="part">Igual</td></tr>
+  </tbody>
+</table>
+
+<div class="callout warn">
+  <strong>Decisión pendiente: el reenvío idéntico dentro de la ventana</strong>
+  Con <code>requestHash</code> y timestamp, el único replay que queda es reenviar <em>exactamente la misma</em> petición en los segundos de la ventana. Google indica que las standard requests tienen una mitigación automática, pero no es un control que el banco gobierne. Si se quiere el mismo nivel que Huawei, se puede registrar el <code>requestHash</code> en Redis con <code>SET NX</code> y TTL igual a la ventana. Es opcional, y conviene decidirlo con el mismo criterio para las tres plataformas.
+</div>
+
+<div class="callout warn">
+  <strong>Riesgo residual: el relay</strong>
+  Si el atacante controla un teléfono sano y modifica la app, puede pedir tokens con el <code>requestHash</code> de las peticiones que arma su bot. El <code>requestHash</code> no lo impide, pero lo vuelve caro: un token por petición, generado al momento. Lo mitigan el límite de peticiones por <code>deviceid</code>, <code>PLAY_RECOGNIZED</code> (detecta apps modificadas) y Tier 1 para lo crítico.
+</div>
+
+<h2>7. Orden de validación en el servicio</h2>
+<div class="card" data-diagram="flow">
+  <div class="card-head"><h4>Validación de un token Android Tier 2</h4><span class="tag neutral">Resumen</span></div>
+  <div class="diagram"></div>
+</div>
+
+<h2>8. Cómo se implementa</h2>
+
+<h3>8.1 App (Kotlin, ilustrativo)</h3>
+<pre><code>// tokenProvider ya preparado al iniciar la app con prepareIntegrityToken (warm-up)
+val ts = System.currentTimeMillis().toString()
+val bodyHash = sha256Hex(bodyBytes)
+val requestHash = sha256Hex(listOf(method, path, bodyHash, deviceId, ts).joinToString("|"))
+
+tokenProvider.request(
+    StandardIntegrityTokenRequest.builder()
+        .setRequestHash(requestHash)
+        .build()
+).addOnSuccessListener { response -&gt;
+    request.header("X-TOKEN-INTEGRITY", response.token())
+           .header("X-INTEGRITY-PLATFORM", "android")
+           .header("X-INTEGRITY-TIMESTAMP", ts)
+    // No se envía requestHash: lo recalcula el servidor
+}</code></pre>
+
+<h3>8.2 APIM: enviar el resumen de la petición</h3>
+<pre><code>&lt;set-variable name="bodyHash" value="@{
+  var body = context.Request.Body?.As&lt;string&gt;(preserveContent: true) ?? &quot;&quot;;
+  using (var sha = System.Security.Cryptography.SHA256.Create()) {
+    return BitConverter.ToString(sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(body)))
+                       .Replace(&quot;-&quot;, &quot;&quot;).ToLower();
+  }
+}" /&gt;
+&lt;send-request mode="new" response-variable-name="integrityResp" timeout="3" ignore-error="true"&gt;
+  &lt;set-url&gt;{{integrity-service-url}}/deviceintegrity/evaluate/posture&lt;/set-url&gt;
+  &lt;set-method&gt;POST&lt;/set-method&gt;
+  &lt;set-header name="Content-Type" exists-action="override"&gt;&lt;value&gt;application/json&lt;/value&gt;&lt;/set-header&gt;
+  &lt;set-body&gt;@(new JObject(
+      new JProperty(&quot;platform&quot;,  &quot;android&quot;),
+      new JProperty(&quot;token&quot;,     context.Request.Headers.GetValueOrDefault(&quot;X-TOKEN-INTEGRITY&quot;, &quot;&quot;)),
+      new JProperty(&quot;method&quot;,    context.Request.Method),
+      new JProperty(&quot;path&quot;,      context.Request.OriginalUrl.Path),
+      new JProperty(&quot;bodyHash&quot;,  (string)context.Variables[&quot;bodyHash&quot;]),
+      new JProperty(&quot;deviceId&quot;,  context.Request.Headers.GetValueOrDefault(&quot;deviceid&quot;, &quot;&quot;)),
+      new JProperty(&quot;timestamp&quot;, context.Request.Headers.GetValueOrDefault(&quot;X-INTEGRITY-TIMESTAMP&quot;, &quot;&quot;))
+  ).ToString())&lt;/set-body&gt;
+&lt;/send-request&gt;</code></pre>
+
+<h3>8.3 Servicio (pseudocódigo)</h3>
+<pre><code>Decision evaluateAndroidPosture(Req r) {
+    long now = clock.millis();
+    if (abs(now - parseLong(r.timestamp)) &gt; WINDOW_MS)       return deny("TIMESTAMP_STALE");
+
+    Payload p = google.decodeIntegrityToken(PACKAGE, r.token); // v1/{packageName}:decodeIntegrityToken
+    if (p == null)                                             return deny("TOKEN_INVALID");
+
+    RequestDetails d = p.requestDetails;
+    if (!PACKAGE.equals(d.requestPackageName))                 return deny("PACKAGE_MISMATCH");
+    if (abs(now - d.timestampMillis) &gt; WINDOW_MS)              return deny("TOKEN_STALE");
+
+    String expected = sha256Hex(join("|", r.method, r.path, r.bodyHash, r.deviceId, r.timestamp));
+    if (!constantTimeEquals(expected, d.requestHash))          return deny("REQUEST_HASH_MISMATCH");
+
+    if (!PACKAGE.equals(p.appIntegrity.packageName)
+        || !"PLAY_RECOGNIZED".equals(p.appIntegrity.appRecognitionVerdict))
+                                                               return policyDecision("APP_NOT_RECOGNIZED");
+    if (!p.deviceIntegrity.deviceRecognitionVerdict.contains("MEETS_DEVICE_INTEGRITY"))
+                                                               return policyDecision("DEVICE_NOT_TRUSTED");
+
+    return allow();
+}</code></pre>
+
+<h2>9. Cómo probarlo</h2>
+<table>
+  <thead><tr><th>Prueba</th><th>Resultado esperado</th></tr></thead>
+  <tbody>
+    <tr><td>Petición legítima de la app</td><td>ALLOW</td></tr>
+    <tr><td>Con un proxy, cambiar un campo del cuerpo y dejar el token</td><td>DENY <code>REQUEST_HASH_MISMATCH</code></td></tr>
+    <tr><td>Usar el token en otro endpoint Tier 2</td><td>DENY <code>REQUEST_HASH_MISMATCH</code></td></tr>
+    <tr><td>Token generado sin <code>requestHash</code> (versión vieja de la app)</td><td>DENY <code>REQUEST_HASH_MISMATCH</code>, o según la política de convivencia de versiones</td></tr>
+    <tr><td>Token generado hace 10 minutos</td><td>DENY <code>TOKEN_STALE</code></td></tr>
+    <tr><td>Cambiar <code>X-INTEGRITY-TIMESTAMP</code> sin regenerar el token</td><td>DENY <code>REQUEST_HASH_MISMATCH</code></td></tr>
+  </tbody>
+</table>
+
+<h2>10. Ajustes al documento</h2>
+<ul>
+  <li>En el diagrama Android Tier 2, cambiar "request Standard sin requestHash transaccional" por <strong>"request Standard con requestHash = SHA256(método | ruta | SHA256(cuerpo) | deviceid | timestamp)"</strong>.</li>
+  <li>Cambiar "Valida package, timestamp y veredictos" por <strong>"recalcula requestHash con la petición recibida, valida requestPackageName, timestampMillis dentro de la ventana y veredictos"</strong>.</li>
+  <li>Agregar <code>X-INTEGRITY-TIMESTAMP</code> a los headers y el resumen de la petición al llamado de APIM al servicio.</li>
+  <li>Definir la ventana de frescura (por ejemplo 60 a 120 s) y la serialización exacta, la misma para las tres plataformas.</li>
+  <li>Definir una política de transición para versiones de la app que aún no envían <code>requestHash</code> (por ejemplo, MONITOR durante un periodo).</li>
+</ul>
+
+</main>
+
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
+
+const D = {
+  doc: `sequenceDiagram
+    autonumber
+    participant App as App Android
+    participant GPS as Google Play Services
+    participant APIM as APIM (policy fragment)
+    participant INT as smp-device-integrity-service
+    participant G as Google decodeIntegrityToken
+    participant BE as Backend de negocio
+    App->>GPS: request Standard sin requestHash
+    GPS-->>App: integrityToken
+    App->>APIM: Request + X-TOKEN-INTEGRITY + X-INTEGRITY-PLATFORM android
+    APIM->>INT: Ruta interna
+    INT->>G: decodeIntegrityToken
+    G-->>INT: payload (requestDetails, appIntegrity, deviceIntegrity)
+    INT->>INT: Valida package, timestamp y veredictos
+    Note over INT: requestHash vacío, no hay nada que comparar
+    INT-->>APIM: ALLOW
+    APIM->>BE: Request + X-Integrity-Decision ALLOW`,
+
+  'attack-tamper': `sequenceDiagram
+    autonumber
+    participant App as App Android sana
+    participant PX as Proxy del atacante
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    participant G as Google
+    participant BE as Backend de negocio
+    App->>App: Pide token sin requestHash
+    App->>PX: Request (cuenta 1234) + token
+    PX->>PX: Cambia la cuenta por ATACANTE-0099
+    PX->>APIM: Request modificada + mismo token
+    APIM->>INT: Evalúa
+    INT->>G: decodeIntegrityToken
+    G-->>INT: Dispositivo y app sanos
+    INT-->>APIM: ALLOW
+    APIM->>BE: Request modificada + X-Integrity-Decision ALLOW`,
+
+  'attack-farm': `sequenceDiagram
+    autonumber
+    participant OK as Android sano del atacante
+    participant BOT as Bot, emulador o rooteado
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    loop Cada petición del bot
+        OK->>OK: Pide token sin requestHash
+        OK->>BOT: Token sano
+        BOT->>APIM: Petición armada por el bot + token
+        APIM->>INT: Evalúa
+        INT->>INT: Veredictos sanos, sin hash que comparar
+        INT-->>APIM: ALLOW
+    end
+    Note over OK,INT: El dispositivo que hace la petición no es el que pasó la validación`,
+
+  fixed: `sequenceDiagram
+    autonumber
+    participant App as App Android
+    participant GPS as Google Play Services
+    participant APIM as APIM (policy fragment)
+    participant INT as smp-device-integrity-service
+    participant G as Google decodeIntegrityToken
+    participant BE as Backend de negocio
+    App->>App: requestHash = SHA256(método | ruta | SHA256(cuerpo) | deviceid | timestamp)
+    App->>GPS: request Standard (requestHash)
+    GPS-->>App: integrityToken
+    App->>APIM: Request + token + X-INTEGRITY-TIMESTAMP
+    APIM->>APIM: Calcula SHA256(cuerpo)
+    APIM->>INT: token, método, ruta, hash del cuerpo, deviceid, timestamp
+    INT->>G: decodeIntegrityToken
+    G-->>INT: requestDetails, appIntegrity, deviceIntegrity
+    INT->>INT: requestPackageName es nuestra app
+    INT->>INT: timestampMillis dentro de la ventana
+    INT->>INT: Recalcula requestHash con la petición recibida y compara
+    INT->>INT: PLAY_RECOGNIZED y MEETS_DEVICE_INTEGRITY
+    INT-->>APIM: ALLOW
+    APIM->>BE: Request + X-Integrity-Decision ALLOW`,
+
+  'fixed-tamper': `sequenceDiagram
+    autonumber
+    participant PX as Proxy del atacante
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    PX->>APIM: Cuerpo modificado + token original
+    APIM->>INT: Resumen del cuerpo modificado
+    INT->>INT: Recalcula hash con el cuerpo modificado
+    INT->>INT: No coincide con requestHash del token
+    INT-->>APIM: DENY REQUEST_HASH_MISMATCH
+    APIM-->>PX: 403 Forbidden`,
+
+  'fixed-farm': `sequenceDiagram
+    autonumber
+    participant BOT as Bot
+    participant APIM as APIM
+    participant INT as smp-device-integrity-service
+    BOT->>APIM: Petición del bot + token de otra petición
+    APIM->>INT: Resumen de la petición del bot
+    INT->>INT: requestHash no coincide
+    INT-->>APIM: DENY REQUEST_HASH_MISMATCH
+    APIM-->>BOT: 403 Forbidden
+    BOT->>APIM: Misma petición + token de hace horas
+    APIM->>INT: Evalúa
+    INT->>INT: timestampMillis fuera de la ventana
+    INT-->>APIM: DENY TOKEN_STALE
+    APIM-->>BOT: 403 Forbidden`,
+
+  flow: `flowchart TD
+    A([token + resumen de la petición]) --> B{Timestamp de la petición dentro de la ventana}
+    B -- No --> X1[DENY TIMESTAMP_STALE]
+    B -- Sí --> C{decodeIntegrityToken exitoso}
+    C -- No --> X2[DENY TOKEN_INVALID]
+    C -- Sí --> D{requestPackageName es nuestra app}
+    D -- No --> X3[DENY PACKAGE_MISMATCH]
+    D -- Sí --> E{timestampMillis dentro de la ventana}
+    E -- No --> X4[DENY TOKEN_STALE]
+    E -- Sí --> F[Recalcula requestHash con la petición recibida]
+    F --> G{Coincide con requestDetails.requestHash}
+    G -- No --> X5[DENY REQUEST_HASH_MISMATCH]
+    G -- Sí --> H{PLAY_RECOGNIZED y MEETS_DEVICE_INTEGRITY}
+    H -- No --> P[Decisión según política]
+    H -- Sí --> OK[ALLOW]
+    classDef bad fill:#FDECEC,stroke:#B91C1C,color:#7F1D1D
+    classDef good fill:#E8F7EE,stroke:#15803D,color:#14532D
+    classDef key fill:#FFF4D6,stroke:#B7791F,color:#7A4F0F
+    class X1,X2,X3,X4,X5 bad
+    class OK good
+    class F,P key`
+};
+
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  themeVariables: {
+    primaryColor: '#EEF2FF',
+    primaryBorderColor: '#001391',
+    primaryTextColor: '#001391',
+    lineColor: '#46536D',
+    actorBkg: '#EEF2FF',
+    actorBorder: '#001391',
+    actorTextColor: '#001391',
+    actorLineColor: '#9AA6C4',
+    signalColor: '#46536D',
+    signalTextColor: '#1F2937',
+    noteBkgColor: '#FFF4D6',
+    noteBorderColor: '#B7791F',
+    noteTextColor: '#1F2937',
+    labelBoxBkgColor: '#FFF4D6',
+    labelBoxBorderColor: '#B7791F',
+    loopTextColor: '#1F2937',
+    sequenceNumberColor: '#FFFFFF'
+  },
+  sequence: { mirrorActors: true, useMaxWidth: false, actorMargin: 30, messageMargin: 30 },
+  flowchart: { useMaxWidth: false, htmlLabels: false, curve: 'basis' }
+});
+
+function fitSvg(svg) {
+  const pad = 12;
+  const bb = svg.getBBox();
+  const w = Math.ceil(bb.width + pad * 2);
+  const h = Math.ceil(bb.height + pad * 2);
+  svg.setAttribute('viewBox', `${bb.x - pad} ${bb.y - pad} ${w} ${h}`);
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  svg.style.maxWidth = '100%';
+  svg.style.height = 'auto';
+}
+
+function pngBlob(svg, scale = 2) {
+  const clone = svg.cloneNode(true);
+  const w = +svg.getAttribute('width');
+  const h = +svg.getAttribute('height');
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.style.maxWidth = '';
+  const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone));
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = w * scale;
+      c.height = h * scale;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0, w, h);
+      c.toBlob(b => (b ? resolve(b) : reject(new Error('PNG'))), 'image/png');
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+for (const card of document.querySelectorAll('[data-diagram]')) {
+  const key = card.dataset.diagram;
+  const target = card.querySelector('.diagram');
+  try {
+    const { svg } = await mermaid.render(`svg-${key}`, D[key]);
+    target.innerHTML = svg;
+    const el = target.querySelector('svg');
+    fitSvg(el);
+    const btn = document.createElement('button');
+    btn.textContent = 'Descargar PNG';
+    btn.onclick = async () => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(await pngBlob(el));
+      a.download = `Android-Tier2-${key}.png`;
+      a.click();
+    };
+    card.querySelector('.card-head').appendChild(btn);
+  } catch (e) {
+    target.textContent = 'Error al renderizar: ' + (e.message || e);
+  }
+}
+</script>
+</body>
+</html>

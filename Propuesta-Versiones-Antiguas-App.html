@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Versiones antiguas de la app — qué haríamos</title>
+<style>
+  :root {
+    --brand: #001391;
+    --ink: #1F2937;
+    --muted: #46536D;
+    --line: #D6DCEB;
+    --bg: #F5F7FC;
+    --bad: #B91C1C;
+    --bad-bg: #FDECEC;
+    --good: #15803D;
+    --good-bg: #E8F7EE;
+    --warn: #B7791F;
+    --warn-bg: #FFF8E6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.55;
+  }
+  header { background: var(--brand); color: #fff; padding: 28px 40px; }
+  header h1 { margin: 0 0 6px; font-size: 24px; }
+  header p { margin: 0; opacity: .88; max-width: 900px; }
+  header code { background: rgba(255,255,255,.15); color: #fff; }
+  main { max-width: 1200px; margin: 0 auto; padding: 24px 40px 60px; }
+  h2 { color: var(--brand); border-bottom: 2px solid var(--brand); padding-bottom: 6px; margin-top: 44px; }
+  h3 { margin: 26px 0 8px; }
+  p, li { font-size: 15px; }
+  code { background: #EEF2FF; padding: 1px 5px; border-radius: 4px; font-size: 13.5px; }
+  pre {
+    background: #0F172A;
+    color: #E2E8F0;
+    padding: 16px 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+  .callout {
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    border: 1px solid;
+    border-left-width: 5px;
+  }
+  .callout.bad { background: var(--bad-bg); border-color: #F5C2C2; border-left-color: var(--bad); }
+  .callout.good { background: var(--good-bg); border-color: #BDE5CB; border-left-color: var(--good); }
+  .callout.warn { background: var(--warn-bg); border-color: #F1D49A; border-left-color: var(--warn); }
+  .callout > strong:first-child { display: block; margin-bottom: 4px; }
+  .card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin: 16px 0 24px;
+    overflow: hidden;
+  }
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line);
+    background: #FAFBFE;
+    gap: 12px;
+  }
+  .card-head h4 { margin: 0; font-size: 14.5px; }
+  .tag { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+  .tag.bad { background: var(--bad-bg); color: var(--bad); }
+  .tag.good { background: var(--good-bg); color: var(--good); }
+  .tag.neutral { background: #EEF2FF; color: var(--brand); }
+  .card-head button {
+    border: 1px solid var(--brand);
+    background: #fff;
+    color: var(--brand);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .card-head button:hover { background: var(--brand); color: #fff; }
+  .diagram { padding: 16px; overflow-x: auto; text-align: center; }
+  .diagram svg { max-width: 100%; height: auto; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+  table { border-collapse: collapse; width: 100%; background: #fff; font-size: 14px; margin: 12px 0; }
+  th, td { border: 1px solid var(--line); padding: 9px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--brand); color: #fff; }
+  td.deny { background: var(--bad-bg); color: var(--bad); font-weight: 600; }
+  td.deg { background: var(--warn-bg); color: #7A4F0F; font-weight: 600; }
+  td.ok { background: var(--good-bg); color: var(--good); font-weight: 600; }
+  .tldr {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-left: 6px solid var(--brand);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-top: 8px;
+  }
+  .tldr ol { margin: 8px 0 0; padding-left: 22px; }
+  .tldr li { margin: 4px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Versiones antiguas de la app: qué haríamos</h1>
+  <p>Propuesta para las versiones de la app Personas que no envían headers de integridad, un caso que el documento de <code>smp-device-integrity-service</code> todavía no cubre.</p>
+</header>
+
+<main>
+
+<section class="tldr">
+  <strong>Propuesta en una frase:</strong> la validación de integridad entra en tres fases. Primero <strong>convivencia en MONITOR</strong>, mientras medimos cuántos usuarios usan cada versión. Después <strong>actualización forzada</strong> a la primera versión con integridad. Al final <strong>ENFORCE</strong>, cuando una petición sin headers ya no puede venir de una app legítima y se deniega.
+  <ol>
+    <li><strong>Agregar un header de versión</strong> (<code>X-APP-VERSION</code>, o el que la app ya envíe) y medir la adopción por versión, plataforma y tier.</li>
+    <li><strong>Convivencia en MONITOR</strong> con fecha de fin. Las peticiones sin headers pasan con <code>SKIPPED</code> y motivo <code>LEGACY_CLIENT</code>, y se registran.</li>
+    <li><strong>Versión mínima con actualización forzada</strong>, usando el mecanismo que la app ya tenga al iniciar. Así el usuario ve "actualiza tu app" y no un error genérico.</li>
+    <li><strong>ENFORCE por tier</strong>, primero Tier 1, cuando se cumplan los criterios de adopción. Sin headers, la respuesta es DENY sin importar la versión declarada.</li>
+  </ol>
+</section>
+
+<h2>1. El problema: un dilema sin salida buena</h2>
+<p>Las versiones publicadas antes de este proyecto <strong>no saben</strong> pedir tokens de Play Integrity, Huawei ni App Attest, así que llegan sin <code>X-TOKEN-INTEGRITY</code> ni <code>X-INTEGRITY-PLATFORM</code>. Cuando el fragmento de APIM ve una petición sin headers, solo tiene dos opciones, y ninguna sirve sin un plan de transición:</p>
+<div class="card" data-diagram="dilemma">
+  <div class="card-head"><h4>¿Qué hace APIM con una petición sin headers?</h4><span class="tag bad">Sin definir</span></div>
+  <div class="diagram"></div>
+</div>
+<div class="grid2">
+  <div class="callout bad">
+    <strong>Opción "dejar pasar": hueco de seguridad</strong>
+    Para APIM, una app vieja es igual que un atacante que <strong>borra los headers</strong>. Si "sin headers" significa ALLOW, cualquier bot se salta la validación con solo no enviar nada. La versión que declara la app tampoco ayuda, porque la escribe el cliente y se falsifica igual.
+  </div>
+  <div class="callout bad">
+    <strong>Opción "bloquear": caída para usuarios reales</strong>
+    Si "sin headers" significa DENY desde el primer día, todos los clientes que no actualizaron reciben un 403. La app vieja no entiende ese error: el usuario ve un mensaje genérico, no sabe que debe actualizar y llama al call center.
+  </div>
+</div>
+
+<h3>1.1 El ataque si se deja pasar</h3>
+<div class="card" data-diagram="strip">
+  <div class="card-head"><h4>El atacante se hace pasar por una versión vieja</h4><span class="tag bad">Vulnerable</span></div>
+  <div class="diagram"></div>
+</div>
+
+<h2>2. Qué haríamos: transición en fases</h2>
+<div class="card" data-diagram="phases">
+  <div class="card-head"><h4>De la versión con integridad a ENFORCE</h4><span class="tag neutral">Propuesta</span></div>
+  <div class="diagram"></div>
+</div>
+
+<table>
+  <thead><tr><th>Fase</th><th>Qué pasa</th><th>Petición con headers</th><th>Petición sin headers</th><th>Para salir de la fase</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>0. Publicación</strong></td>
+      <td>Se publica la versión <em>N</em>, que envía headers de integridad y <code>X-APP-VERSION</code>. Los Named Values quedan en MONITOR.</td>
+      <td class="ok">Se evalúa y se registra la decisión, pero no se bloquea</td>
+      <td class="ok">SKIPPED <code>LEGACY_CLIENT</code></td>
+      <td>La versión <em>N</em> está disponible en las tres tiendas.</td>
+    </tr>
+    <tr>
+      <td><strong>1. Convivencia en MONITOR</strong></td>
+      <td>Se mide la adopción y la tasa de DENY "hipotéticos" (falsos positivos) por plataforma.</td>
+      <td class="ok">Igual que en la fase 0</td>
+      <td class="ok">SKIPPED <code>LEGACY_CLIENT</code> (se mide)</td>
+      <td>Se cumplen los criterios de la sección 4, o vence la fecha de fin.</td>
+    </tr>
+    <tr>
+      <td><strong>2. Versión mínima</strong></td>
+      <td>La configuración remota sube la versión mínima a <em>N</em>. Las versiones anteriores muestran la pantalla de actualización obligatoria al iniciar.</td>
+      <td class="ok">Igual que en la fase 0</td>
+      <td class="deg">426 <code>UPDATE_REQUIRED</code> (Tier 1 y Tier 2)</td>
+      <td>Unas semanas con muy pocas peticiones sin headers.</td>
+    </tr>
+    <tr>
+      <td><strong>3. ENFORCE</strong></td>
+      <td>ENFORCE por plataforma y por tier, primero Tier 1.</td>
+      <td class="ok">ALLOW / DEGRADED / DENY según la evaluación</td>
+      <td class="deny">DENY <code>INTEGRITY_HEADERS_MISSING</code></td>
+      <td>Estado final.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout warn">
+  <strong>La convivencia tiene un costo: es una ventana abierta</strong>
+  Mientras dure la fase 1, un atacante puede borrar los headers y pasar como cliente antiguo. Por eso la ventana debe tener <strong>fecha de fin</strong> pactada desde el inicio, y durante ella conviene sumar controles compensatorios en Tier 1: límites de monto más bajos para clientes sin headers, más peso en el motor de fraude y alertas si el volumen sin headers <strong>sube</strong> en lugar de bajar.
+</div>
+
+<h3>2.1 Lógica de decisión en APIM</h3>
+<div class="card" data-diagram="decision">
+  <div class="card-head"><h4>Petición a una operación Tier 1 o Tier 2</h4><span class="tag neutral">Propuesta</span></div>
+  <div class="diagram"></div>
+</div>
+
+<h3>2.2 Por qué la actualización forzada va antes de ENFORCE</h3>
+<p>La app vieja no sabe interpretar ningún código nuevo, ni un 426 ni un <code>UPDATE_REQUIRED</code>. Lo que <strong>sí</strong> entiende es el mecanismo de versión mínima que ya tenga al iniciar, como la configuración remota o el endpoint de versión que consultan casi todas las apps bancarias. Si ese mecanismo existe, el usuario ve "actualiza tu app" antes de llegar a cualquier operación protegida.</p>
+<div class="grid2">
+  <div class="card" data-diagram="badorder">
+    <div class="card-head"><h4>ENFORCE sin actualización forzada</h4><span class="tag bad">Mala experiencia</span></div>
+    <div class="diagram"></div>
+  </div>
+  <div class="card" data-diagram="goodorder">
+    <div class="card-head"><h4>Actualización forzada antes de ENFORCE</h4><span class="tag good">Recomendado</span></div>
+    <div class="diagram"></div>
+  </div>
+</div>
+<div class="callout warn">
+  <strong>Dependencia a confirmar con el equipo móvil</strong>
+  ¿Las versiones actuales en producción ya tienen un mecanismo de versión mínima o actualización forzada? Si <strong>no</strong> lo tienen, hay que agregarlo en una versión previa, y la fase 2 solo alcanza a quienes tengan esa versión. A los demás les llega un error genérico, que conviene acompañar con comunicación (push, correo, banner web).
+</div>
+
+<h2>3. Detalles por plataforma</h2>
+<table>
+  <thead><tr><th>Plataforma</th><th>Consideración</th><th>Qué haríamos</th></tr></thead>
+  <tbody>
+    <tr><td>Android (Google Play)</td><td>La adopción depende de las actualizaciones automáticas de Play. Además, la cuota de Play Integrity crece con la adopción.</td><td>Usar el ritmo de adopción para planificar el aumento de cuota antes de ENFORCE. Opcional: In-App Updates de Play para pedir la actualización.</td></tr>
+    <tr><td>Huawei (AppGallery)</td><td>Suele tener una adopción más lenta y una base más pequeña.</td><td>Su propio switch (<code>allowintegrityverifyhuawei</code>) y su propio umbral. Puede pasar a ENFORCE más tarde que Android.</td></tr>
+    <tr><td>iOS (App Store)</td><td>Apple recomienda enrolar App Attest de forma gradual.</td><td>La fase 1 sirve para escalonar los enrolamientos. ENFORCE en iOS solo cuando la mayoría de los dispositivos activos ya enroló.</td></tr>
+  </tbody>
+</table>
+<p>Los Named Values por plataforma que ya define el documento permiten avanzar de fase <strong>por plataforma</strong>. Falta poder hacerlo <strong>por tier</strong>: proponemos un modo por tier (por ejemplo <code>integritymodetier1</code> y <code>integritymodetier2</code> con valores <code>MONITOR</code> o <code>ENFORCE</code>) para activar Tier 1 primero.</p>
+
+<h2>4. Criterios para pasar de fase</h2>
+<table>
+  <thead><tr><th>Métrica (por plataforma)</th><th>Criterio sugerido</th><th>Para qué</th></tr></thead>
+  <tbody>
+    <tr><td>% de usuarios activos con versión ≥ <em>N</em></td><td>≥ 90 % para activar la versión mínima (fase 2)</td><td>Que la actualización forzada afecte a pocos usuarios</td></tr>
+    <tr><td>% de peticiones Tier 1 sin headers</td><td>&lt; 1 % durante 2 semanas para ENFORCE en Tier 1</td><td>Que el bloqueo casi no toque tráfico legítimo</td></tr>
+    <tr><td>DENY "hipotéticos" en MONITOR</td><td>Por debajo del umbral pactado con Riesgos (por ejemplo 0,5 %)</td><td>Detectar falsos positivos de los proveedores antes de bloquear</td></tr>
+    <tr><td>Tendencia de peticiones sin headers</td><td>Debe <strong>bajar</strong> en cada semana de la ventana</td><td>Si sube, puede haber un ataque que se aprovecha de la convivencia</td></tr>
+    <tr><td>Errores del proveedor (timeouts, cuota)</td><td>Estables y dentro de la cuota aprobada</td><td>Evitar que ENFORCE convierta una falla de Google, Huawei o Apple en una caída</td></tr>
+  </tbody>
+</table>
+<p>Los porcentajes son un punto de partida. Los valores definitivos los aprueban Riesgos y Producto con la línea base medida en la fase 1.</p>
+
+<h2>5. Cómo se implementa</h2>
+<h3>5.1 Fragmento de APIM (ilustrativo)</h3>
+<pre><code>&lt;choose&gt;
+  &lt;!-- sin headers de integridad: cliente antiguo o manipulado --&gt;
+  &lt;when condition="@(string.IsNullOrEmpty(context.Request.Headers.GetValueOrDefault(&quot;X-TOKEN-INTEGRITY&quot;, &quot;&quot;)))"&gt;
+    &lt;choose&gt;
+      &lt;when condition="@(&quot;{{integritylegacyphase}}&quot; == &quot;MONITOR&quot;)"&gt;
+        &lt;set-header name="X-Integrity-Decision" exists-action="override"&gt;&lt;value&gt;SKIPPED&lt;/value&gt;&lt;/set-header&gt;
+        &lt;set-header name="X-Integrity-Reason" exists-action="override"&gt;&lt;value&gt;LEGACY_CLIENT&lt;/value&gt;&lt;/set-header&gt;
+        &lt;!-- firma HMAC de la decisión, igual que en el resto de ramas --&gt;
+      &lt;/when&gt;
+      &lt;when condition="@(&quot;{{integritylegacyphase}}&quot; == &quot;MIN_VERSION&quot;)"&gt;
+        &lt;return-response&gt;
+          &lt;set-status code="426" reason="Upgrade Required" /&gt;
+          &lt;set-body&gt;{"code":"UPDATE_REQUIRED"}&lt;/set-body&gt;
+        &lt;/return-response&gt;
+      &lt;/when&gt;
+      &lt;otherwise&gt;  &lt;!-- ENFORCE --&gt;
+        &lt;return-response&gt;
+          &lt;set-status code="403" reason="Forbidden" /&gt;
+          &lt;set-body&gt;{"code":"INTEGRITY_HEADERS_MISSING"}&lt;/set-body&gt;
+        &lt;/return-response&gt;
+      &lt;/otherwise&gt;
+    &lt;/choose&gt;
+  &lt;/when&gt;
+  &lt;otherwise&gt;
+    &lt;!-- flujo normal: evaluate/transaction o evaluate/posture --&gt;
+  &lt;/otherwise&gt;
+&lt;/choose&gt;</code></pre>
+<p>La decisión <strong>no</strong> depende de <code>X-APP-VERSION</code>. Ese header es solo para medir, porque el cliente lo puede falsificar. Lo que bloquea es la <strong>ausencia de headers</strong> según la fase vigente, que es un Named Value con un único valor para todos.</p>
+
+<h3>5.2 Lo que la app debe hacer desde la versión <em>N</em></h3>
+<ul>
+  <li>Enviar siempre <code>X-APP-VERSION</code> en todas las peticiones, incluidas las de Tier 3, para tener la foto completa de la adopción.</li>
+  <li>Tratar <code>426 UPDATE_REQUIRED</code> y <code>403 INTEGRITY_HEADERS_MISSING</code> mostrando la pantalla de actualización. Esto protege a las versiones futuras cuando cambie el protocolo.</li>
+  <li>Consultar la versión mínima al iniciar, si todavía no lo hace.</li>
+</ul>
+
+<h2>6. Decisiones que debe aprobar el negocio</h2>
+<table>
+  <thead><tr><th>Decisión</th><th>Propuesta técnica</th><th>Quién aprueba</th></tr></thead>
+  <tbody>
+    <tr><td>Duración máxima de la convivencia en MONITOR</td><td>Fecha fija, por ejemplo 8 a 12 semanas desde la publicación de <em>N</em></td><td>Producto, Riesgos y AppSec</td></tr>
+    <tr><td>Controles compensatorios en Tier 1 durante la convivencia</td><td>Límite de monto más bajo y más peso en el motor de fraude para clientes sin headers</td><td>Riesgos y Fraude</td></tr>
+    <tr><td>Umbrales de adopción para pasar de fase</td><td>Los de la sección 4, ajustados con la línea base</td><td>Producto y Riesgos</td></tr>
+    <tr><td>Orden de activación</td><td>Tier 1 antes que Tier 2, y Android antes que Huawei e iOS según la adopción</td><td>AppSec y Arquitectura</td></tr>
+    <tr><td>Comunicación a clientes</td><td>Push, correo y banner antes de la fase 2</td><td>Marketing y Canales</td></tr>
+  </tbody>
+</table>
+
+<h2>7. Texto sugerido para el documento</h2>
+<div class="callout warn">
+  <strong>Para agregar en la sección de operación (ENFORCE y MONITOR) y en la tabla 4.1</strong>
+  "Las versiones de la app anteriores a <em>N</em> no envían headers de integridad. La validación entra en tres fases: (1) convivencia en MONITOR con fecha de fin, donde las peticiones sin headers se responden como SKIPPED/LEGACY_CLIENT y se registran; (2) versión mínima <em>N</em> con actualización forzada, donde las peticiones sin headers reciben 426 UPDATE_REQUIRED; (3) ENFORCE por tier y plataforma, donde las peticiones sin headers se deniegan con INTEGRITY_HEADERS_MISSING. El paso entre fases depende de los criterios de adopción aprobados. La versión declarada por la app (X-APP-VERSION) solo se usa para medir y nunca para conceder ALLOW."
+</div>
+
+</main>
+
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
+
+const D = {
+  dilemma: `flowchart LR
+    A([Petición sin headers de integridad]) --> B{¿Qué hace APIM?}
+    B -- Deja pasar --> C[Un bot borra los headers y se salta la validación]
+    B -- Bloquea --> D[Los clientes con la app vieja reciben 403 sin explicación]
+    classDef bad fill:#FDECEC,stroke:#B91C1C,color:#7F1D1D
+    class C,D bad`,
+
+  strip: `sequenceDiagram
+    autonumber
+    participant ATK as Bot o app modificada
+    participant APIM as APIM
+    participant BE as Backend de negocio
+    ATK->>ATK: Quita X-TOKEN-INTEGRITY y X-INTEGRITY-PLATFORM
+    ATK->>APIM: Transferencia (Tier 1) sin headers de integridad
+    APIM->>APIM: Sin headers, debe ser una app vieja
+    APIM->>BE: Operación permitida
+    BE-->>ATK: 200 OK
+    Note over ATK,BE: Sin fecha de fin, la convivencia es un bypass permanente`,
+
+  phases: `flowchart TD
+    F0[Fase 0: se publica la versión N con headers de integridad] --> F1[Fase 1: convivencia en MONITOR, se mide la adopción]
+    F1 -->|se cumplen los criterios o vence la fecha| F2[Fase 2: versión mínima N, actualización forzada]
+    F2 -->|pocas peticiones sin headers| F3[Fase 3: ENFORCE, primero Tier 1 y luego Tier 2]
+    classDef ok fill:#E8F7EE,stroke:#15803D,color:#14532D
+    classDef warn fill:#FFF4D6,stroke:#B7791F,color:#7A4F0F
+    classDef bad fill:#FDECEC,stroke:#B91C1C,color:#7F1D1D
+    class F0,F1 ok
+    class F2 warn
+    class F3 bad`,
+
+  decision: `flowchart TD
+    A([Petición Tier 1 o Tier 2]) --> B{¿Trae headers de integridad?}
+    B -- Sí --> E[Evaluación normal con el proveedor]
+    E --> M{Modo del tier y la plataforma}
+    M -- MONITOR --> M1[Registra la decisión y deja pasar]
+    M -- ENFORCE --> M2[Aplica ALLOW, DEGRADED o DENY]
+    B -- No --> P{Fase de convivencia vigente}
+    P -- MONITOR --> S[SKIPPED LEGACY_CLIENT + métrica + controles compensatorios]
+    P -- Versión mínima --> U[426 UPDATE_REQUIRED]
+    P -- ENFORCE --> X[DENY INTEGRITY_HEADERS_MISSING]
+    classDef bad fill:#FDECEC,stroke:#B91C1C,color:#7F1D1D
+    classDef good fill:#E8F7EE,stroke:#15803D,color:#14532D
+    classDef warn fill:#FFF4D6,stroke:#B7791F,color:#7A4F0F
+    class X bad
+    class M2,M1 good
+    class S,U warn`,
+
+  badorder: `sequenceDiagram
+    autonumber
+    actor U as Cliente
+    participant App as App versión vieja
+    participant APIM as APIM
+    U->>App: Hace una transferencia
+    App->>APIM: Petición sin headers
+    APIM-->>App: 403 INTEGRITY_HEADERS_MISSING
+    App-->>U: Ocurrió un error, intenta más tarde
+    Note over U: No sabe que debe actualizar y llama al call center`,
+
+  goodorder: `sequenceDiagram
+    autonumber
+    actor U as Cliente
+    participant App as App versión vieja
+    participant CFG as Configuración remota
+    U->>App: Abre la app
+    App->>CFG: ¿Cuál es la versión mínima?
+    CFG-->>App: N
+    App-->>U: Pantalla: actualiza tu app para continuar
+    U->>App: Actualiza a la versión N
+    Note over U,App: Llega a las operaciones ya con headers de integridad`
+};
+
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  themeVariables: {
+    primaryColor: '#EEF2FF',
+    primaryBorderColor: '#001391',
+    primaryTextColor: '#001391',
+    lineColor: '#46536D',
+    actorBkg: '#EEF2FF',
+    actorBorder: '#001391',
+    actorTextColor: '#001391',
+    actorLineColor: '#9AA6C4',
+    signalColor: '#46536D',
+    signalTextColor: '#1F2937',
+    noteBkgColor: '#FFF4D6',
+    noteBorderColor: '#B7791F',
+    noteTextColor: '#1F2937',
+    labelBoxBkgColor: '#FFF4D6',
+    labelBoxBorderColor: '#B7791F',
+    loopTextColor: '#1F2937',
+    sequenceNumberColor: '#FFFFFF'
+  },
+  sequence: { mirrorActors: true, useMaxWidth: false, actorMargin: 30, messageMargin: 30 },
+  flowchart: { useMaxWidth: false, htmlLabels: false, curve: 'basis', wrappingWidth: 220 }
+});
+
+function fitSvg(svg) {
+  const pad = 12;
+  const bb = svg.getBBox();
+  const w = Math.ceil(bb.width + pad * 2);
+  const h = Math.ceil(bb.height + pad * 2);
+  svg.setAttribute('viewBox', `${bb.x - pad} ${bb.y - pad} ${w} ${h}`);
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  svg.style.maxWidth = '100%';
+  svg.style.height = 'auto';
+}
+
+function pngBlob(svg, scale = 2) {
+  const clone = svg.cloneNode(true);
+  const w = +svg.getAttribute('width');
+  const h = +svg.getAttribute('height');
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.style.maxWidth = '';
+  const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone));
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = w * scale;
+      c.height = h * scale;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0, w, h);
+      c.toBlob(b => (b ? resolve(b) : reject(new Error('PNG'))), 'image/png');
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+for (const card of document.querySelectorAll('[data-diagram]')) {
+  const key = card.dataset.diagram;
+  const target = card.querySelector('.diagram');
+  try {
+    const { svg } = await mermaid.render(`svg-${key}`, D[key]);
+    target.innerHTML = svg;
+    const el = target.querySelector('svg');
+    fitSvg(el);
+    const btn = document.createElement('button');
+    btn.textContent = 'Descargar PNG';
+    btn.onclick = async () => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(await pngBlob(el));
+      a.download = `Versiones-Antiguas-${key}.png`;
+      a.click();
+    };
+    card.querySelector('.card-head').appendChild(btn);
+  } catch (e) {
+    target.textContent = 'Error al renderizar: ' + (e.message || e);
+  }
+}
+</script>
+</body>
+</html>

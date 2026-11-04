@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Riesgos de capacidad y operación — índice</title>
+<style>
+  :root {
+    --brand: #001391;
+    --ink: #1F2937;
+    --muted: #46536D;
+    --line: #D6DCEB;
+    --bg: #F5F7FC;
+    --good: #15803D;
+    --good-bg: #E8F7EE;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.55;
+  }
+  header { background: var(--brand); color: #fff; padding: 28px 40px; }
+  header h1 { margin: 0 0 6px; font-size: 24px; }
+  header p { margin: 0; opacity: .88; max-width: 900px; }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 40px 60px; }
+  a { color: var(--brand); text-decoration: none; }
+  .card {
+    display: block;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 18px 20px;
+    margin: 14px 0;
+  }
+  .card:hover { border-color: var(--brand); }
+  .card h2 { margin: 0 0 6px; font-size: 17px; color: var(--brand); }
+  .card p { margin: 0; font-size: 14.5px; color: var(--muted); }
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--good-bg);
+    color: var(--good);
+    margin-bottom: 8px;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Riesgos de capacidad y operación</h1>
+  <p>Índice de los seis hallazgos. Cada uno tiene su HTML con diagramas, postura y texto para el documento.</p>
+</header>
+<main>
+  <a class="card" href="Conclusion-Cuota-Play-Integrity.html">
+    <span class="tag">Listo</span>
+    <h2>1. Cuota de Google Play Integrity</h2>
+    <p>Los tokens estándar solo se descifran en Google. La cuota por defecto (10 000/día) no alcanza para Tier 2. Pedir ampliación antes de producción.</p>
+  </a>
+  <a class="card" href="Explicacion-iOS-Counter-ETag.html">
+    <span class="tag">Listo</span>
+    <h2>2. Contador iOS en Cosmos DB</h2>
+    <p>La escritura del counter tiene que ser condicional (ETag o patch con filtro). Si no, la misma aserción pasa en paralelo y el counter puede retroceder.</p>
+  </a>
+  <a class="card" href="Propuesta-iOS-Sin-AppAttest.html">
+    <span class="tag">Listo</span>
+    <h2>3. Dispositivos sin App Attest</h2>
+    <p><code>isSupported = false</code> lo declara el cliente. Postura UNVERIFIED: Tier 1 se deniega y Tier 2 queda DEGRADED. Un dispositivo ya enrolado no puede degradar.</p>
+  </a>
+  <a class="card" href="Propuesta-Versiones-Antiguas-App.html">
+    <span class="tag">Listo</span>
+    <h2>4. Versiones antiguas de la app</h2>
+    <p>Sin headers de integridad no se distingue una app vieja de un bot. Convivencia en MONITOR, luego versión mínima, luego ENFORCE.</p>
+  </a>
+  <a class="card" href="Explicacion-RateLimit-Challenge.html">
+    <span class="tag">Listo</span>
+    <h2>5. Rate limit de /deviceintegrity/initiate</h2>
+    <p>Limitar solo por deviceid y sessionappid no basta: el cliente los rota. Sesión autenticada, una clave Redis por sid, techos por sesión / IP / global.</p>
+  </a>
+  <a class="card" href="Explicacion-Huawei-Validacion-JWS.html">
+    <span class="tag">Listo</span>
+    <h2>6. Huawei: validación local del JWS</h2>
+    <p>No hay API de descifrado. El banco verifica cadena CBG, hoja, firma, paquete y basicIntegrity. Quitar la flecha del servicio a Huawei. basicIntegrity es más débil que MEETS_DEVICE_INTEGRITY: riesgo aceptado.</p>
+  </a>
+</main>
+</body>
+</html>
