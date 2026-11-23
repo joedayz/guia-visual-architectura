@@ -1,0 +1,80 @@
+---
+title: TAPP Onboarding — Secuencia de creación del Tapp ID
+---
+%% Fuentes: captura "Onboarding – Creación de TAPP ID" (pasos 1 a 4.4); parte 1 y 3 (Figma),
+%% parte 6 (06:01–14:32), parte 7 (08:13–09:15).
+%% La creación no toca el UPI Switch ni el directorio BCRP (parte 3 09:01; parte 4 24:05).
+%% Pendientes: P3 (estados intermedios), P12 (falla de post-mortem), P16/P17 (SMS), P20 (componente de notificación).
+sequenceDiagram
+    autonumber
+    actor C as Cliente
+    participant App as App Interbank (SMP)
+    participant BE as Interbank App Backend<br/>(Azure)
+    participant F as Pre-DBFD / DBFD
+    participant SRM as SRM (mainframe)
+    participant GW as API GW Terceros PCI<br/>(AWS IBK)
+    participant PAC as Izipay PAC
+    participant LTD as LTD
+    participant N as Notificaciones
+
+    C->>App: Acepta TyC y confirma su celular
+    alt Android anterior a 15 y lectura de SIM exitosa
+        App->>App: Lee número y operador de la SIM
+    else iOS, Android 15+ o falla de lectura
+        C->>App: Escribe su número
+    end
+
+    App->>BE: 2. Solicitar token
+    BE->>F: 2.2 Registro real-time (fraude)
+    alt Desaprobado
+        F-->>BE: Rechazo
+        BE->>F: Post-mortem del rechazo
+        BE-->>App: No puede continuar
+    else Aprobado
+        F-->>BE: OK
+        BE->>SRM: 2.3 Obtiene el celular del cliente
+        SRM-->>BE: Celular registrado
+        alt El número no coincide
+            BE-->>App: Número distinto
+            App-->>C: Flujo de actualización de celular y cerrar sesión
+        else Coincide
+            BE->>GW: /service/QueryDeviceDetailsReq (datos del dispositivo)
+            GW->>PAC: 2.4 Solicitar token
+            alt Tope de intentos
+                PAC-->>BE: Error de límite
+                BE-->>App: "Reintenta dentro de 24 horas"
+            else OK
+                PAC-->>BE: Token SMS
+                BE-->>App: Token
+            end
+        end
+    end
+
+    alt Android con permiso de SMS
+        App->>App: 3. Envía el SMS desde el app
+    else iOS o Android sin permiso
+        App->>C: Abre Mensajes con el SMS armado
+        C->>App: Envía el SMS y vuelve al app
+    end
+    Note over App: Paso 3 sin backend.<br/>Loader: verificación de dispositivo, celular y creación
+
+    App->>BE: 4. Validar token y crear Tapp ID (4.1)
+    BE->>GW: /service/ValidateDeviceDetailsReq
+    GW->>PAC: 4.2 Valida SMS token y crea Tapp ID
+    PAC->>PAC: Compara SMS con datos del dispositivo
+    alt Tapp ID creado
+        PAC-->>BE: Estado: creado (inactivo)
+        BE->>F: 4.3 Post-mortem de éxito
+        BE->>GW: 4.4 Evidencia digital
+        GW->>LTD: Registro de evidencia
+        BE->>N: Correo de creación: falta vincular una cuenta
+        BE-->>App: Tapp ID creado, inactivo
+        App-->>C: Constancia "te falta vincular tu cuenta"
+    else SMS incorrecto o error
+        PAC-->>BE: Estado: SMS incorrecto / error
+        BE->>F: Post-mortem de fallo
+        BE-->>App: ¿Error al crear Tapp ID?
+    else En proceso o SMS recibido (P3)
+        PAC-->>BE: Estado intermedio
+        Note over BE,PAC: Llamada síncrona. Cómo se resuelve<br/>un estado intermedio está por confirmar
+    end

@@ -1,0 +1,83 @@
+---
+title: TAPP Onboarding — Componentes de alto nivel
+---
+%% Fuentes: capturas de la sesión (imagenes/ 12-nov: PostLogin, Creación, Afiliación, Aplicaciones impactadas),
+%% transcripciones trabajo/transcripciones/parte1..8, TAPP-onboarding-arquitectura.md v3.
+%% Líneas punteadas = relación mencionada pero no confirmada (ver tapp-onboarding-diagramas.md).
+flowchart TB
+    subgraph CANAL["Canal"]
+        CLI(["Cliente Interbank"])
+        APP["App Interbank (SMP)<br/>Android · iOS<br/>SDK UPI CL · SDK BCO"]
+    end
+
+    subgraph IBK["Interbank"]
+        subgraph AZ["Cloud Azure IBK"]
+            BE["Interbank App Backend (SMP)<br/>post-login, creación y afiliación"]
+            CACHE[("Redis<br/>listas de PSP y proveedores<br/>TTL 1 h")]
+            TOK[("BD del canal<br/>token CL y CLVersion<br/>(P34)")]
+        end
+        subgraph ONP["On-premise IBK (distribuido y mainframe)"]
+            PRE["Pre-DBFD<br/>fraude real-time y post-mortem"]
+            DBFD["DBFD"]
+            SRM["SRM<br/>celular del cliente"]
+        end
+        subgraph AWSI["Cloud AWS IBK"]
+            GW["API Gateway Terceros<br/>(PCI)"]
+            LTD["LTD<br/>evidencia digital"]
+            BCO["BCO<br/>fraude comportamental"]
+        end
+        CI["Consulta integrada (core)<br/>vía API interno (P14)"]
+        PC["Proveedor de Cuentas<br/>Interbank"]
+    end
+
+    subgraph IZI["Izipay (PAC) · Cloud AWS Izipay"]
+        PAC["PAC / TCS<br/>Tapp ID, cuentas, Clave Tapp,<br/>consultas al directorio"]
+    end
+
+    subgraph EXT["Externo"]
+        UPI["UPI Switch<br/>Directorio BCRP"]
+        PCX["Proveedores de cuenta<br/>de otros bancos"]
+    end
+
+    CLI --> APP
+    APP -->|"zona TAPP y onboarding"| BE
+    BE --> CACHE
+    BE --> TOK
+    BE -->|"real-time / post-mortem"| PRE
+    PRE --> DBFD
+    BE -->|"celular (creación)"| SRM
+    BE -.->|"cruce de réplica (afiliación)"| CI
+    BE -->|"síncrono"| GW
+    GW --> PAC
+    GW -->|"evidencia"| LTD
+    GW -.-> BCO
+    PAC -->|"directorio, OTP (P33)"| UPI
+    UPI --> PCX
+    UPI -.->|"P33"| PC
+    PAC -.->|"on-us directo (P33)"| PC
+
+    classDef canal fill:#f5f5f5,stroke:#6b6b6b,color:#222
+    classDef azure fill:#e3f2fb,stroke:#1f6fb2,color:#0b2a44
+    classDef onprem fill:#fdf6e3,stroke:#c0392b,color:#3b1d16
+    classDef aws fill:#fff1dc,stroke:#e67e22,color:#4a2a05
+    classDef izipay fill:#ede7f6,stroke:#5e35b1,color:#26124d
+    classDef externo fill:#eeeeee,stroke:#555555,color:#222
+    classDef store fill:#fffbe6,stroke:#b08900,color:#3a2e00
+    classDef pendiente stroke-dasharray:5 5
+
+    class CLI,APP canal
+    class BE azure
+    class CACHE,TOK store
+    class PRE,DBFD,SRM onprem
+    class GW,LTD,BCO aws
+    class PAC izipay
+    class UPI,PCX externo
+    class CI,PC,TOK pendiente
+
+    style CANAL fill:#fafafa,stroke:#6b6b6b
+    style IBK fill:#ffffff,stroke:#1f6fb2
+    style AZ fill:#eef7fd,stroke:#1f6fb2
+    style ONP fill:#fdf6e3,stroke:#c0392b
+    style AWSI fill:#fff7ec,stroke:#e67e22
+    style IZI fill:#f5f0fb,stroke:#5e35b1
+    style EXT fill:#f2f2f2,stroke:#555555
