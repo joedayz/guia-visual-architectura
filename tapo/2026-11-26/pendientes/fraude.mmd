@@ -1,0 +1,10 @@
+flowchart LR
+    BE["Backend del canal"]
+    PRE["Pre-DBFD<br/>real-time bloquea<br/>post-mortem va después y es asíncrono"]
+    GW["API Gateway de terceros PCI"]
+    LTD["LTD<br/>evidencia, asíncrono"]
+    BCO["BCO<br/>comportamental, asíncrono"]
+    BE --> PRE
+    BE --> GW
+    GW --> LTD
+    GW --> BCO

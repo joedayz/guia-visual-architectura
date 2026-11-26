@@ -1,0 +1,7 @@
+flowchart TB
+    F["Favorito<br/>alias que el cliente prefiere<br/>este cierre no lo crea ni lo cambia"]
+    CP["Cuenta principal<br/>cuenta que recibe los fondos<br/>no sale del favorito"]
+    AD["Alias del directorio<br/>lo que la búsqueda por celular devuelve<br/>recibe esos abonos<br/>cambia con MODIFY si el cliente confirma"]
+    F -.->|"es otra cosa"| AD
+    CP -.->|"es otra cosa"| AD
+    F -.->|"es otra cosa"| CP

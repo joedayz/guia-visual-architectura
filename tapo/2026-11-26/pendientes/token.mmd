@@ -1,0 +1,9 @@
+flowchart LR
+    subgraph CERRADO["Cerrado"]
+        PAC["El PAC refresca las listas<br/>una vez al día"]
+        R[("Redis<br/>PSP y proveedores<br/>vigencia de 1 hora")]
+        PAC --> R
+    end
+    subgraph ABIERTO["Sin cerrar"]
+        T[("Token CL<br/>es por cliente<br/>el almacén no tiene nombre")]
+    end

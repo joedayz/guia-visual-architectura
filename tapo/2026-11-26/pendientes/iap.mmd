@@ -1,0 +1,8 @@
+flowchart LR
+    P["PAC responde ListAccountReq"]
+    C{"Difieren de las cuentas on-us"}
+    I["IAP<br/>la flecha del deck no trae servicio<br/>el contrato lo arma VEDS con el PAC"]
+    S["Sigue con las cuentas que se pueden ofrecer"]
+    P --> C
+    C -->|Sí| I
+    C -->|No| S

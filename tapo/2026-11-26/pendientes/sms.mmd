@@ -1,0 +1,11 @@
+flowchart TB
+    A["Android envía el SMS desde el app"]
+    Q{"Cuándo se pide el permiso<br/>no está en el Figma"}
+    I["Al instalar"]
+    U["Al enviar"]
+    R["Si el cliente lo rechaza<br/>hay que volver a pedirlo"]
+    A --> Q
+    Q --> I
+    Q --> U
+    I --> R
+    U --> R

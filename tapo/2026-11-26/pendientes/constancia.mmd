@@ -1,0 +1,9 @@
+flowchart TB
+    S["La cuenta elegida responde SUCCESS"]
+    P["Constancia en pantalla<br/>la muestra el canal"]
+    B["Copia en la bandeja<br/>el componente que envía no está nombrado"]
+    N["Cualquier otro resultado"]
+    E["Pantalla de pendiente o de error"]
+    S --> P
+    S -.-> B
+    N --> E

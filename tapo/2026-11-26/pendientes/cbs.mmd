@@ -1,0 +1,6 @@
+flowchart LR
+    BE["Backend SMP"]
+    PAC["PAC"]
+    H["CBS cuenta activa<br/>DCMS tarjeta<br/>ATM clave de cajero"]
+    BE -.->|"camino sin confirmar"| H
+    PAC -.->|"camino sin confirmar"| H

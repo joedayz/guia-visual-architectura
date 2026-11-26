@@ -1,0 +1,9 @@
+flowchart TB
+    subgraph CRE["Creación del Tapp ID, SMS de verificación"]
+        direction TB
+        c1["Corta en el cuarto intento"] --> c2["Queda 24 horas"] --> c3["El contador lo lleva el PAC"]
+    end
+    subgraph AFI["Afiliación, OTP y clave de cajero, HU 12"]
+        direction TB
+        a1["Corta en el tercer intento"] --> a2["Queda 24 horas"] --> a3["Pendiente de validación<br/>incluye bloqueo de la tarjeta de débito"]
+    end

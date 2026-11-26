@@ -1,0 +1,18 @@
+flowchart LR
+    subgraph DHU["Catálogo de la DHU"]
+        direction TB
+        D1["ReqListAccPvd"]
+        D2["ListAccount"]
+        D3["ReqOtp<br/>genera el OTP"]
+        D4["ReqRegMob<br/>valida OTP y clave de cajero<br/>y configura el UPI PIN"]
+    end
+    subgraph DECK["Rutas del deck"]
+        direction TB
+        K1["ReqListAccPvd"]
+        K2["ListAccountReq"]
+        K3["AddAccountReq"]
+        K4["UpiOtpRequest"]
+        K5["UpiPinReq"]
+        K6["BalEnqReq<br/>rótulo de validar clave"]
+    end
+    D1 ==>|"único nombre que coincide"| K1
