@@ -1,0 +1,110 @@
+---
+title: Afiliación de la cuenta al Tapp ID
+---
+%% Deck: Onboarding – Afiliación Cuenta a TappID.
+%% Reglas de entidad, mbeba, modo calle y SUCCESS: DHU de onboarding.
+%% BalEnqReq es el rótulo del deck para validar la clave. Confirmar en el PDF.
+%% IAP no tiene nombre de servicio.
+sequenceDiagram
+    actor C as Cliente
+    participant App as App Interbank
+    participant BE as Backend SMP
+    participant R as Redis
+    participant F as Pre-DBFD
+    participant IAP as IAP
+    participant GW as API GW Terceros PCI
+    participant PAC as PAC
+    participant UPI as UPI Switch
+    participant LTD as LTD
+
+    App->>BE: 1. Listar proveedores
+    BE->>R: 1.1 Caché
+    opt Caché vencida
+        BE->>GW: ReqListAccPvd
+        GW->>PAC: ReqListAccPvd
+        PAC-->>BE: Entidades
+        BE->>R: Actualiza
+    end
+    BE-->>App: Entidades habilitadas
+    C->>App: Elige entidad
+    Note over BE: No llama ListAccount si la lista no trae una entidad válida
+
+    App->>BE: 2. Listar cuentas
+    BE->>F: 2.1 Real-time
+    alt Fraude no aprueba
+        BE-->>App: No continúa
+    else Aprueba
+        BE->>GW: ListAccountReq
+        GW->>PAC: ListAccountReq
+        PAC-->>BE: Cuentas
+        opt Difieren de las cuentas on-us
+            BE-->>IAP: Aviso, servicio sin nombre
+        end
+        alt Entidad Interbank y hay cuenta en modo calle
+            BE-->>App: Solo esa cuenta
+        else Resto de casos
+            BE-->>App: Cuentas elegibles
+        end
+    end
+
+    C->>App: Elige cuenta
+    alt La cuenta no se puede vincular ahora
+        App-->>C: No se agrega por ahora
+    else mbeba Y y la cuenta ya está afiliada
+        C->>App: Ingresa el UPI PIN existente
+        App->>BE: 5.b Validar clave
+        BE->>GW: BalEnqReq
+        GW->>PAC: BalEnqReq
+        PAC-->>BE: Resultado
+    else mbeba N
+        App->>BE: 3.2 Agregar cuenta
+        BE->>GW: AddAccountReq
+        GW->>PAC: AddAccountReq
+        PAC-->>BE: Cuenta asociada
+        App->>BE: 4.1 Solicitar OTP
+        BE->>GW: UpiOtpRequest
+        GW->>PAC: UpiOtpRequest
+        PAC-->>BE: El banco confirmó el envío
+        Note over App: El OTP no se guarda ni se reutiliza
+        C->>App: Últimos 6, vencimiento, clave de cajero, OTP y Clave Tapp
+        App->>BE: 5.a Crear clave
+        BE->>GW: UpiPinReq
+        GW->>PAC: UpiPinReq
+        PAC-->>BE: Clave creada
+        BE->>GW: Evidencia 5.a y 5.b
+        GW->>LTD: Registro asíncrono
+    end
+
+    BE->>GW: 6.1 getMapperAddressListReq type=CHECK
+    GW->>PAC: getMapperAddressListReq
+    PAC->>UPI: ¿El alias está en el directorio?
+    UPI-->>PAC: Sí o no
+    alt No está en el directorio
+        BE->>GW: 6.a createMapperReq
+        GW->>PAC: Vincula el celular
+        PAC->>UPI: Alta
+    else Está y la búsqueda devuelve otro alias
+        BE->>GW: 6.b getMapperAddressListReq actionType=PORT
+        GW->>PAC: Consulta el alias de la búsqueda
+        PAC->>UPI: Consulta
+        UPI-->>PAC: Alias actual
+        PAC-->>App: Cambiar a @interbank o mantener
+        opt El cliente cambia
+            C->>App: Confirma el cambio
+            BE->>GW: 6.b createMapperReq actionType=MODIFY
+            GW->>PAC: Portabilidad
+            PAC->>UPI: Modifica
+        end
+    else Ya es el alias de la búsqueda
+        Note over BE,UPI: No se modifica el directorio
+    end
+    BE->>F: Post-mortem 6.a y 6.b, asíncrono
+
+    alt Llega SUCCESS de esa cuenta
+        BE-->>App: Afiliación confirmada
+        App-->>C: Constancia
+        Note over App: La constancia también va a la bandeja. Quién la envía no está cerrado
+    else No se puede confirmar
+        BE-->>App: Pendiente o error
+        Note over App: No se muestra éxito
+    end

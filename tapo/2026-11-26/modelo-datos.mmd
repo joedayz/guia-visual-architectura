@@ -1,0 +1,68 @@
+classDiagram
+    class EstadoTappId {
+        <<enumeration>>
+        NO_CREADO
+        INACTIVO
+        ACTIVO
+    }
+
+    class TappId {
+        +String alias
+        +String celular
+        +EstadoTappId estado
+        +crear()
+        +consultar()
+    }
+
+    class DeviceBinding {
+        +String deviceId
+        +vincular()
+    }
+
+    class TokenCL {
+        +String clToken
+        +String clVersion
+        +DateTime vencimiento
+        +Boolean estaVigente()
+    }
+
+    class CuentaElegible {
+        +String referencia
+        +Boolean mbeba
+        +Boolean modoCalle
+        +Boolean afiliada
+    }
+
+    class Afiliacion {
+        +String referenciaCuenta
+        +Boolean confirmada
+        +vincular()
+    }
+
+    class AliasDirectorio {
+        +String alias
+        +Boolean esElQueDevuelveLaBusqueda
+    }
+
+    class Favorito {
+        +String aliasPreferido
+    }
+
+    class CuentaPrincipal {
+        +String referenciaCuenta
+    }
+
+    class ListaEcosistema {
+        +String tipo
+        +DateTime vigenteHasta
+    }
+
+    TappId "1" --> "1" EstadoTappId
+    TappId "1" --> "0..1" DeviceBinding : binding cuando aplique
+    DeviceBinding "1" --> "0..1" TokenCL : por cliente y dispositivo
+    TappId "1" --> "0..*" CuentaElegible : consulta
+    TappId "1" --> "0..*" Afiliacion : al menos una para cerrar
+    Afiliacion "1" --> "1" CuentaElegible
+    AliasDirectorio "0..1" ..> TappId : principal del directorio
+    Favorito "0..1" ..> TappId : no se mueve en este cierre
+    CuentaPrincipal "0..1" ..> CuentaElegible : no se infiere del favorito

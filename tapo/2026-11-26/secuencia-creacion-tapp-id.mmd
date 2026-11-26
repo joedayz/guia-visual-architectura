@@ -1,0 +1,71 @@
+---
+title: Creación del Tapp ID
+---
+%% Deck: Onboarding – Creación de TAPP ID.
+%% Las dos llamadas del PAC siguen hacia el UPI Switch.
+%% El alta del alias en el directorio no está en este flujo.
+sequenceDiagram
+    actor C as Cliente
+    participant App as App Interbank
+    participant BE as Backend SMP
+    participant F as Pre-DBFD
+    participant SRM as SRM
+    participant GW as API GW Terceros PCI
+    participant PAC as PAC
+    participant UPI as UPI Switch
+    participant LTD as LTD
+    participant BCO as BCO
+
+    C->>App: Pulsa Afiliarme
+    App-->>C: Antes de comenzar
+    alt Abandona en esta pantalla
+        Note over App: No hay Tapp ID, ni directorio, ni afiliación parcial
+    else Continúa
+        alt Android y el SIM se puede leer
+            App->>App: Lee el número
+        else iOS o Android sin lectura
+            C->>App: Escribe el número
+        end
+
+        App->>BE: Solicitar token
+        BE->>F: 2.2 Real-time
+        alt Fraude no aprueba
+            F-->>BE: Rechazo
+            BE->>F: Post-mortem del rechazo
+            BE-->>App: No continúa
+        else Aprueba
+            BE->>SRM: 2.3 Celular del cliente
+            SRM-->>BE: Número registrado
+            alt No coincide
+                BE-->>App: Actualizar datos o apagar modo calle
+            else Coincide
+                BE->>GW: QueryDeviceDetailsReq
+                GW->>PAC: 2.4 Solicitar token
+                PAC->>UPI: Consulta de dispositivo
+                UPI-->>PAC: Resultado
+                PAC-->>BE: Token
+                alt Android
+                    App->>App: Envía el SMS desde el app
+                else iOS
+                    App->>C: Abre Mensajes con el SMS listo
+                    C->>App: Lo envía y vuelve
+                end
+                App->>BE: 4.1 Validar token y crear
+                BE->>GW: ValidateDeviceDetailsReq
+                GW->>PAC: 4.2 Valida el SMS y crea el Tapp ID
+                PAC->>UPI: Consulta de dispositivo
+                UPI-->>PAC: Resultado
+                PAC-->>BE: Tapp ID inactivo
+                par Después de la respuesta
+                    BE->>F: 4.3 Post-mortem
+                    BE->>GW: 4.4 Evidencia
+                    GW->>LTD: Registro
+                    BE->>GW: 4.4 Comportamental
+                    GW->>BCO: Registro
+                end
+                BE-->>App: Tapp ID inactivo
+                App-->>C: Ya tienes tu Tapp ID
+                Note over App: Si regresa antes de afiliar, el Tapp ID sigue inactivo
+            end
+        end
+    end

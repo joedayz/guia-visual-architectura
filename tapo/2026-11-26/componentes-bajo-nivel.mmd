@@ -1,0 +1,77 @@
+---
+title: TAPP Onboarding — Componentes de bajo nivel (26-nov-2026)
+---
+%% Fuente: docs/architecture/tapp-onboarding-base-2026-11-26.md
+%% Cada flecha al PAC usa la ruta del deck. La línea punteada no tiene contrato o camino cerrado.
+%% El ecosistema de seguridad del canal no es un componente de este flujo: es condición de entrada.
+flowchart TB
+    subgraph APP["App Interbank"]
+        UI["Pantallas<br/>bienvenida, antes de comenzar,<br/>entidad, cuentas, tarjeta y clave"]
+        SIM["Lectura de SIM y envío de SMS"]
+        SDK["SDK UPI CL<br/>getCLVersion, getChallenge, registerApp"]
+    end
+
+    subgraph BE["Backend SMP · Azure"]
+        ORQ["Orquestación de onboarding"]
+        CACHE[("Redis<br/>ListPsp y ListAccPvd<br/>TTL 1 h, dato global")]
+        TOK[("Token CL y versión<br/>almacén por confirmar")]
+    end
+
+    subgraph IBK["Capacidades Interbank"]
+        SRM["SRM"]
+        PRE["Pre-DBFD"]
+        IAP["IAP"]
+        CORE["CBS · DCMS · ATM"]
+        GW["API Gateway terceros PCI"]
+        LTD["LTD"]
+        BCOBOX["BCO"]
+    end
+
+    subgraph PACZ["PAC · AWS Izipay"]
+        PAC["PAC"]
+    end
+
+    UPI["UPI Switch · directorio BCRP"]
+
+    UI --> ORQ
+    SIM --> ORQ
+    SDK --> ORQ
+    ORQ --> CACHE
+    ORQ -.-> TOK
+
+    ORQ -->|"2.3 celular"| SRM
+    ORQ -->|"2.2 y 2.1 real-time<br/>4.3, 6.a y 6.b post-mortem async"| PRE
+    ORQ -.->|"2.2 diferencia on-us<br/>servicio sin nombre"| IAP
+    ORQ -.->|"HU 12: cuenta, tarjeta y PIN<br/>camino no dibujado en el deck"| CORE
+
+    ORQ --> GW
+    GW -->|"sync QueryDeviceDetailsReq<br/>sync ValidateDeviceDetailsReq"| PAC
+    GW -->|"sync ListKeys, ListPsp, ListAccPvd, QueryVPAs"| PAC
+    GW -->|"sync ReqListAccPvd, ListAccountReq, AddAccountReq"| PAC
+    GW -->|"sync UpiOtpRequest, UpiPinReq, BalEnqReq"| PAC
+    GW -->|"sync getMapperAddressListReq<br/>sync createMapperReq"| PAC
+    GW -->|"4.4 y 5.a 5.b evidencia async"| LTD
+    GW -->|"4.4 comportamental async"| BCOBOX
+
+    PAC -->|"creación: las dos llamadas de dispositivo"| UPI
+    PAC -->|"CHECK, PORT, MODIFY y alta de celular"| UPI
+
+    classDef app fill:#f5f5f5,stroke:#6b6b6b,color:#222
+    classDef be fill:#e3f2fb,stroke:#1f6fb2,color:#0b2a44
+    classDef ibk fill:#fff1dc,stroke:#e67e22,color:#4a2a05
+    classDef pac fill:#ede7f6,stroke:#5e35b1,color:#26124d
+    classDef ext fill:#eeeeee,stroke:#555555,color:#222
+    classDef pendiente stroke-dasharray:5 5
+
+    class UI,SIM,SDK app
+    class ORQ be
+    class CACHE,TOK be
+    class SRM,PRE,GW,LTD,BCOBOX ibk
+    class PAC pac
+    class UPI ext
+    class TOK,IAP,CORE pendiente
+
+    style APP fill:#fafafa,stroke:#6b6b6b
+    style BE fill:#eef7fd,stroke:#1f6fb2
+    style IBK fill:#fff7ec,stroke:#e67e22
+    style PACZ fill:#f5f0fb,stroke:#5e35b1

@@ -1,0 +1,60 @@
+---
+title: Post-login — cliente con Tapp ID
+---
+%% Deck: Cliente con TAPP ID, pasos 1 a 7.
+%% Los pasos A se resuelven en el backend. Se sale al PAC solo si hay que crear, rotar o refrescar.
+sequenceDiagram
+    actor C as Cliente
+    participant App as App Interbank
+    participant BE as Backend SMP
+    participant R as Redis
+    participant GW as API GW Terceros PCI
+    participant PAC as PAC
+    participant UPI as UPI Switch
+
+    C->>App: Entra a la zona TAPP
+    App->>BE: Validaciones iniciales
+
+    opt Hay variación de dispositivo
+        BE->>GW: QueryDeviceDetails
+        GW->>PAC: QueryDeviceDetails
+        PAC-->>BE: Resultado
+    end
+
+    BE->>BE: 3.a Revisa token CL y versión en su almacén
+    opt Falta el token, venció o cambió la versión
+        BE->>GW: ListKeys type=ListKeys
+        GW->>PAC: ListKeys
+        PAC-->>BE: Llaves BCRP
+        App->>App: getChallenge
+        BE->>GW: ListKeys type=GetToken
+        GW->>PAC: ListKeys
+        PAC-->>BE: Token CL creado o rotado
+    end
+
+    BE->>R: Lee listas de PSP y de proveedores
+    opt La caché de una hora no está vigente
+        BE->>GW: ListPsp
+        GW->>PAC: ListPsp
+        BE->>GW: ListAccPvd
+        GW->>PAC: ListAccPvd
+        PAC-->>BE: Listas
+        BE->>R: Actualiza la caché
+    end
+
+    BE->>GW: QueryVPAs
+    GW->>PAC: QueryVPAs
+    PAC-->>BE: Alias, estado y cuentas
+
+    BE->>GW: getMapperAddressList
+    GW->>PAC: getMapperAddressList
+    PAC->>UPI: Consulta el directorio
+    UPI-->>PAC: Resultado
+    PAC-->>BE: Si el alias de la búsqueda es el de Interbank
+
+    alt Tapp ID inactivo
+        BE-->>App: Falta afiliar una cuenta
+    else Tapp ID activo
+        BE-->>App: Home de TAPP
+    end
+    App-->>C: Pantalla que corresponde

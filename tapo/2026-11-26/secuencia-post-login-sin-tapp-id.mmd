@@ -1,0 +1,37 @@
+---
+title: Post-login — cliente sin Tapp ID
+---
+%% Deck: Cliente sin TAPP ID. Solo pasos 1 a 3.
+%% Si no hay baseline de dispositivo, la sala dijo no consultar la variación.
+sequenceDiagram
+    actor C as Cliente
+    participant App as App Interbank
+    participant BE as Backend SMP
+    participant GW as API GW Terceros PCI
+    participant PAC as PAC
+
+    C->>App: Entra a la zona TAPP
+    Note over App: Ya cumplió el ecosistema de seguridad del canal
+    App->>BE: Validaciones iniciales
+
+    opt Hay datos previos del dispositivo
+        BE->>GW: QueryDeviceDetails
+        GW->>PAC: QueryDeviceDetails
+        PAC-->>BE: Resultado de la variación
+    end
+
+    opt No hay llaves vigentes
+        BE->>GW: ListKeys type=ListKeys
+        GW->>PAC: ListKeys
+        PAC-->>BE: Llaves BCRP
+    end
+
+    App->>App: SDK getCLVersion y getChallenge
+    opt No hay token CL o debe rotarse
+        BE->>GW: ListKeys type=GetToken
+        GW->>PAC: ListKeys
+        PAC-->>BE: Token CL
+    end
+
+    BE-->>App: No hay Tapp ID
+    App-->>C: Bienvenida del onboarding
