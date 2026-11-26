@@ -6,7 +6,28 @@ Acompaña el diseño de esta carpeta. Cada punto es algo que las fuentes nombran
 
 Cerrar un punto cambia una flecha de punteada a sólida, o le pone el servicio que hoy no tiene. No cambia el alcance: post-login, creación del Tapp ID y afiliación de la primera cuenta.
 
+La mayoría son técnicos: falta el contrato, el nombre del servicio o el componente. Negocio ya dijo el comportamiento. Tres puntos sí los cierra negocio, y uno se parte.
+
+| Punto | Quién lo cierra |
+|---|---|
+| 1. Catálogos de servicios | Técnico |
+| 2. Rótulo `BalEnqReq` | Técnico |
+| 3. Servicio de IAP | Técnico |
+| 4. Constancia en la bandeja | Los dos. Negocio dice si es el mismo envío que el correo del proveedor. Técnico nombra al componente |
+| 5. Almacén del token CL | Técnico |
+| 6. CBS, DCMS y ATM | Técnico |
+| 7. Bloqueo de la HU 12 | Negocio confirma el tercer intento y el bloqueo de tarjeta. El del SMS de creación ya está cerrado: cuarto intento, lo lleva el PAC |
+| 8. Largo de la Clave Tapp | Negocio |
+| 9. Permiso de SMS | Negocio |
+| 10. Handoff Pre-DBFD y BCO | Técnico |
+| 11. Favorito, cuenta principal y alias del directorio | Negocio |
+| 12. Persistencia, directorio y volumetría | Técnico |
+| 12. Matriz de errores | Los dos. Negocio define mensaje, acción y recuperación. Técnico define el código |
+| 13. Otras DHU | Alcance ya cerrado. No es una decisión pendiente |
+
 ## 1. Dos catálogos para las mismas llamadas
+
+**Técnico.**
 
 La DHU y el deck no hablan el mismo idioma de servicios. Las secuencias usan las rutas del deck. La DHU manda en el comportamiento de pantalla.
 
@@ -25,7 +46,7 @@ Hay que responder con una tabla de equivalencias firmada por quien tenga el cont
 
 ## 2. El rótulo BalEnqReq
 
-En la foto del deck, el paso «validar Clave Tapp» está rotulado `/service/BalEnqReq`. El nombre parece una consulta de saldo. En el gráfico anterior queda suelto, abajo a la derecha, con esa leyenda.
+**Técnico.** En la foto del deck, el paso «validar Clave Tapp» está rotulado `/service/BalEnqReq`. El nombre parece una consulta de saldo. En el gráfico anterior queda suelto, abajo a la derecha, con esa leyenda.
 
 El diseño lo conservó como rótulo de la foto. Crear la clave sigue en `UpiPinReq`.
 
@@ -33,7 +54,7 @@ Hay que leerlo en el PDF original de `TAPP-Onboarding.pdf`, no en la foto. Si el
 
 ## 3. IAP no tiene servicio
 
-Cuando las cuentas que devuelve el PAC no coinciden con las on-us de Interbank, el deck dibuja un aviso a IAP. La flecha no trae operación.
+**Técnico.** Cuando las cuentas que devuelve el PAC no coinciden con las on-us de Interbank, el deck dibuja un aviso a IAP. La flecha no trae operación.
 
 ![Diferencia de cuentas hacia IAP](pendientes/iap.png)
 
@@ -43,7 +64,7 @@ Hace falta el nombre de la operación, quién la llama y qué se envía cuando h
 
 ## 4. Quién envía la constancia a la bandeja
 
-La HU 14 exige dos cosas juntas cuando la cuenta elegida responde `SUCCESS`: la constancia en pantalla y una copia en la bandeja del cliente. Si el resultado es otro, la pantalla es pendiente o error.
+**Los dos.** La HU 14 exige dos cosas juntas cuando la cuenta elegida responde `SUCCESS`: la constancia en pantalla y una copia en la bandeja del cliente. Si el resultado es otro, la pantalla es pendiente o error.
 
 ![Constancia solo después de SUCCESS](pendientes/constancia.png)
 
@@ -53,7 +74,7 @@ Hay que nombrar al emisor de la bandeja y decir si ese envío es el correo del p
 
 ## 5. Dónde se guarda el token CL
 
-Las listas y el token no son el mismo dato. Las listas son del ecosistema. El token es del cliente.
+**Técnico.** Las listas y el token no son el mismo dato. Las listas son del ecosistema. El token es del cliente.
 
 ![Redis cerrado y token sin almacén](pendientes/token.png)
 
@@ -63,7 +84,7 @@ Hay que decir en qué base vive, si va cifrado y cuánto dura. La vigencia de 30
 
 ## 6. Quién llama a CBS, DCMS y ATM
 
-La HU 12, cuando la entidad es Interbank, separa tres validaciones: CBS mira que la cuenta esté activa, DCMS mira la tarjeta y ATM mira la clave de cajero. Validar la cuenta en CBS no afilia esa cuenta al Tapp ID. El deck no muestra esas llamadas.
+**Técnico.** La HU 12, cuando la entidad es Interbank, separa tres validaciones: CBS mira que la cuenta esté activa, DCMS mira la tarjeta y ATM mira la clave de cajero. Validar la cuenta en CBS no afilia esa cuenta al Tapp ID. El deck no muestra esas llamadas.
 
 ![Camino sin confirmar hacia CBS, DCMS y ATM](pendientes/cbs.png)
 
@@ -73,7 +94,7 @@ Hay que decir quién llama a cada uno y en qué momento de la afiliación.
 
 ## 7. Hay dos bloqueos de 24 horas
 
-Los dos duran un día y se parecen al contarlos en voz alta. Cortan cosas distintas.
+**Negocio, solo el de la afiliación.** Los dos duran un día y se parecen al contarlos en voz alta. Cortan cosas distintas.
 
 ![Contador de creación y contador de afiliación](pendientes/contadores.png)
 
@@ -85,7 +106,7 @@ Hay que confirmar el de la HU 12, decir quién lleva ese contador y si el bloque
 
 ## 8. Largo de la Clave Tapp
 
-El mock de «Ingresa tu Clave Tapp» pinta cuatro posiciones. En sala quedó abierto si son 4 o 6. No cambia las cajas ni las flechas.
+**Negocio.** El mock de «Ingresa tu Clave Tapp» pinta cuatro posiciones. En sala quedó abierto si son 4 o 6. No cambia las cajas ni las flechas.
 
 `mbeba=Y` pide la clave que ya existe. `mbeba=N` la crea con `UpiPinReq`. Eso está cerrado y no depende del largo.
 
@@ -93,7 +114,7 @@ Hay que fijar el largo para el contrato y para la pantalla.
 
 ## 9. Permiso de SMS en Android
 
-Android envía el SMS desde el app. iOS lo envía desde Mensajes, así que este permiso no le aplica. Android intenta leer el SIM; si no puede, el cliente escribe el número. iOS siempre lo escribe. Eso es el comportamiento ya dibujado en la creación.
+**Negocio.** Android envía el SMS desde el app. iOS lo envía desde Mensajes, así que este permiso no le aplica. Android intenta leer el SIM; si no puede, el cliente escribe el número. iOS siempre lo escribe. Eso es el comportamiento ya dibujado en la creación.
 
 El permiso es otra decisión. No está en el Figma.
 
@@ -103,7 +124,7 @@ Hay que decidir si se pide al instalar o al enviar, y qué pantalla ve el client
 
 ## 10. Handoff entre canal, Pre-DBFD y BCO
 
-El orden del deck sí está dibujado. El real-time de Pre-DBFD bloquea, en la creación antes del token y en la afiliación antes de listar cuentas. El post-mortem va después y es asíncrono. LTD y BCO también son asíncronos y salen por el API Gateway.
+**Técnico.** El orden del deck sí está dibujado. El real-time de Pre-DBFD bloquea, en la creación antes del token y en la afiliación antes de listar cuentas. El post-mortem va después y es asíncrono. LTD y BCO también son asíncronos y salen por el API Gateway.
 
 ![Orden cerrado de Pre-DBFD, LTD y BCO](pendientes/fraude.png)
 
@@ -113,7 +134,7 @@ Hay que cerrar ese handoff. El orden de las llamadas ya no está en discusión.
 
 ## 11. Favorito, cuenta principal y alias del directorio
 
-Tres frases de la sala se pisan. La DHU y el deck hablan de cosas distintas.
+**Negocio.** Tres frases de la sala se pisan. La DHU y el deck hablan de cosas distintas.
 
 ![Favorito, cuenta principal y alias del directorio](pendientes/alias.png)
 
@@ -129,18 +150,18 @@ Hay que decir si `MODIFY` mueve solo el alias de la búsqueda, y dejar escrito q
 
 ## 12. Persistencia, errores y volumetría
 
-Son cuatro cierres de documento. Ninguno cambia el dibujo de componentes hasta que llegue el dato.
+**Técnico, salvo la matriz de errores.** Son cuatro cierres de documento. Ninguno cambia el dibujo de componentes hasta que llegue el dato.
 
-| Pendiente | Qué dice la fuente | Qué se necesita |
+| Pendiente | Quién lo cierra | Qué dice la fuente | Qué se necesita |
 |---|---|---|
-| Vínculo cuenta a Tapp ID | La DHU marca el API como pendiente | La operación que persiste la relación y el momento en que pasa a `SUCCESS` |
-| Estado contra el directorio | Está definido solo a nivel conceptual | Qué se guarda en canal y qué se vuelve a preguntar al directorio |
-| Catálogo de errores | La HU 15 pide la matriz final. Check status y recovery están conceptuales. Los feature flags figuran como propuesta | La matriz código, mensaje, acción y recuperación. Las credenciales no viajan en ese estado |
-| Volumetría del PAC | La premisa de diseño es 3 segundos por llamada no financiera | Las pruebas de performance. La premisa de 3 segundos se mantiene hasta que esas pruebas digan otra cosa |
+| Vínculo cuenta a Tapp ID | Técnico | La DHU marca el API como pendiente | La operación que persiste la relación y el momento en que pasa a `SUCCESS` |
+| Estado contra el directorio | Técnico | Está definido solo a nivel conceptual | Qué se guarda en canal y qué se vuelve a preguntar al directorio |
+| Catálogo de errores | Los dos | La HU 15 pide la matriz final. Check status y recovery están conceptuales. Los feature flags figuran como propuesta | Negocio define mensaje, acción y recuperación. Técnico define el código. Las credenciales no viajan en ese estado |
+| Volumetría del PAC | Técnico | La premisa de diseño es 3 segundos por llamada no financiera | Las pruebas de performance. La premisa de 3 segundos se mantiene hasta que esas pruebas digan otra cosa |
 
 ## 13. Historias que este paquete no cubre
 
-El diseño cubre la entrada a la zona, la creación del Tapp ID y la afiliación de la primera cuenta. Tres historias se nombran al lado y no vinieron en este PDF.
+**Alcance ya cerrado.** El diseño cubre la entrada a la zona, la creación del Tapp ID y la afiliación de la primera cuenta. Tres historias se nombran al lado y no vinieron en este PDF.
 
 ![Alcance de este diseño](pendientes/alcance.png)
 
