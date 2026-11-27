@@ -1,0 +1,16 @@
+---
+title: Onboarding — tres procesos
+---
+flowchart TD
+    entrar["Entra a la zona TAPP"] --> dispositivo["Dispositivo y token CL"]
+    dispositivo --> tiene{"Tiene Tapp ID"}
+    tiene -->|No| crear["Crear Tapp ID. Queda inactivo"]
+    tiene -->|Si| consultar["Listas, QueryVPAs y directorio"]
+    crear --> afiliar["Afiliar la primera cuenta"]
+    consultar --> activo{"Tapp ID activo"}
+    activo -->|No| afiliar
+    activo -->|Si| home["Home de TAPP"]
+    afiliar --> success{"SUCCESS de esa cuenta"}
+    success -->|Si| constancia["Constancia en pantalla"]
+    success -->|No| pendiente["Pendiente o error"]
+    constancia --> hueco["SyncCustomerAccounts. No está en el diseño"]

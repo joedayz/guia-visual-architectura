@@ -1,0 +1,28 @@
+---
+title: Quién entrega las cuentas
+---
+flowchart TD
+    dia["Cada día, batch"] --> srm["SRM, maestro de clientes"]
+    dia --> core["Core de cuentas"]
+    srm --> iap["IAP"]
+    core --> iap
+    iap --> replica["Réplica del Proveedor de Cuentas"]
+    replica --> gap["Cliente y cuentas del banco. La afiliación a TAPP no viene en ese batch"]
+
+    cliente["Cliente agrega una cuenta"] --> canal["Canal"]
+    canal --> gw["API GW Terceros PCI"]
+    gw --> pac["PAC"]
+    pac --> lista["Entidades y cuentas para la pantalla"]
+    lista --> dif{"On-us distinto de lo que devolvió el PAC"}
+    dif -->|Sí| aviso["Aviso a IAP, sin nombre de servicio"]
+    dif -->|No| afilia["Sigue la afiliación"]
+    aviso --> afilia
+    afilia --> ok{"SUCCESS del PAC"}
+    ok -->|No| stop["Pendiente o error. No hay aviso de asociación"]
+    ok -->|Sí| porque["La réplica sigue con el batch. La afiliación quedó en el PAC"]
+    porque --> api["SyncCustomerAccounts"]
+    api --> apim["APIM Interno PCI"]
+    apim --> pc["Proveedor de Cuentas"]
+    pc --> cmp{"La notificación difiere de la réplica"}
+    cmp -->|Sí| syn["Sincroniza"]
+    cmp -->|No| nosyn["No dispara la sincronización"]

@@ -1,0 +1,84 @@
+---
+title: TAPP Onboarding — Componentes de alto nivel (27-nov-2026)
+---
+%% Fuente: tapp-onboarding-base-2026-11-26.md y la lámina 22 del 27-nov.
+%% Una caja es una plataforma. Backend SMP es la solución, cerrada.
+%% Punteado: la fuente lo nombra y no cierra contrato o zona.
+flowchart TB
+    subgraph CANAL["Canal"]
+        CLI["Cliente Interbank"]
+        APP["App Interbank<br/>SDK UPI CL y SDK BCO"]
+    end
+
+    subgraph IBK["Interbank"]
+        subgraph AZ["Cloud Azure IBK"]
+            BE["Backend SMP"]
+            CACHE[("Redis<br/>listas de PSP y de proveedores")]
+            TOK[("Almacén del token CL<br/>ubicación por confirmar")]
+            APIM["APIM Interno PCI"]
+            PCIBK["Proveedor de Cuentas"]
+        end
+        subgraph ONP["On-premise"]
+            PRE["Pre-DBFD"]
+            SRM["SRM"]
+            CORE["CBS, DCMS y ATM"]
+        end
+        subgraph AWS["Cloud AWS IBK"]
+            GW["API Gateway de terceros PCI"]
+            LTD["LTD"]
+            BCO["BCO"]
+        end
+        IAP["IAP<br/>zona sin cerrar"]
+    end
+
+    subgraph IZI["Izipay · Cloud AWS Izipay"]
+        PAC["PAC @interbank"]
+    end
+
+    subgraph EXT["Externo"]
+        UPI["UPI Switch<br/>directorio BCRP"]
+        PCX["Proveedor de cuenta externo"]
+    end
+
+    CLI --> APP
+    APP --> BE
+    BE --> CACHE
+    BE -.-> TOK
+    BE --> PRE
+    BE --> SRM
+    BE -.-> CORE
+    BE --> GW
+    BE -.-> IAP
+    BE -.-> APIM
+    APIM -.-> PCIBK
+    GW -->|"síncrono"| PAC
+    GW -->|"asíncrono"| LTD
+    GW -->|"asíncrono"| BCO
+    PAC --> UPI
+    UPI -.-> PCX
+
+    classDef canal fill:#f5f5f5,stroke:#6b6b6b,color:#222
+    classDef azure fill:#e3f2fb,stroke:#1f6fb2,color:#0b2a44
+    classDef onprem fill:#fdf6e3,stroke:#c0392b,color:#3b1d16
+    classDef aws fill:#fff1dc,stroke:#e67e22,color:#4a2a05
+    classDef izipay fill:#ede7f6,stroke:#5e35b1,color:#26124d
+    classDef externo fill:#eeeeee,stroke:#555555,color:#222
+    classDef store fill:#fffbe6,stroke:#b08900,color:#3a2e00
+    classDef pendiente stroke-dasharray:5 5
+
+    class CLI,APP canal
+    class BE azure
+    class CACHE,TOK store
+    class PRE,SRM onprem
+    class GW,LTD,BCO aws
+    class PAC izipay
+    class UPI,PCX externo
+    class TOK,IAP,CORE,APIM,PCIBK pendiente
+
+    style CANAL fill:#fafafa,stroke:#6b6b6b
+    style IBK fill:#ffffff,stroke:#1f6fb2
+    style AZ fill:#eef7fd,stroke:#1f6fb2
+    style ONP fill:#fdf6e3,stroke:#c0392b
+    style AWS fill:#fff7ec,stroke:#e67e22
+    style IZI fill:#f5f0fb,stroke:#5e35b1
+    style EXT fill:#f2f2f2,stroke:#555555
