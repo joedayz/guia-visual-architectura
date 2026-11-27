@@ -1,0 +1,9 @@
+flowchart LR
+    T["Consulta de tope<br/>operación sin nombre"]
+    A{"¿Llegó al tope?"}
+    N["No se muestra el botón"]
+    B["Se muestra guardar"]
+    O["Alta en Favoritos One App<br/>¿pide OTP?"]
+    T --> A
+    A -->|Sí| N
+    A -->|No| B --> O

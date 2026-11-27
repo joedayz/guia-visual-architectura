@@ -1,0 +1,38 @@
+---
+title: Consulta del beneficiario
+---
+%% Lámina 8, paso 1, y el recorrido de Malena sobre la lámina 18.
+%% El directorio solo se elige si la llave es un teléfono o un contacto.
+sequenceDiagram
+    actor C as Cliente
+    participant App as App Personas
+    participant BE as Backend del app
+    participant GW as API GW terceros PCI
+    participant PAC as PAC
+
+    C->>App: TAPP ID, teléfono, contacto o QR
+    App->>BE: Consultar beneficiario
+
+    alt QR
+        BE->>GW: QRValidationRequest
+        GW->>PAC: QRValidationRequest
+        PAC-->>BE: Beneficiario
+        Note over BE: Falta el campo que dice si el QR lo generó TAPP
+    else TAPP ID
+        BE->>GW: ValidateVPAAddress
+        GW->>PAC: ValidateVPAAddress
+        PAC-->>BE: Beneficiario
+    else Teléfono o contacto
+        Note over App: El contacto es un teléfono
+        BE->>GW: contactSwipeRequest
+        GW->>PAC: contactSwipeRequest
+        PAC-->>BE: Directorios donde está el número
+        BE-->>App: Selector de destino
+        C->>App: Elige TAPP, Plin, Yape u otro
+        BE->>GW: ValidateVPAAddress sobre ese directorio
+        GW->>PAC: ValidateVPAAddress
+        PAC-->>BE: Beneficiario en ese directorio
+    end
+
+    BE-->>App: Beneficiario identificado
+    Note over App: TAPP a TAPP o TAPP hacia fuera lo resuelve el PAC. El canal no bifurca el pago.

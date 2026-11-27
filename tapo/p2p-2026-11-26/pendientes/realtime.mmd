@@ -1,0 +1,6 @@
+flowchart LR
+    M["MFA"]
+    C["CIAM<br/>la sala: directo, sin MPA"]
+    P["PRE DBFD<br/>la lámina: real time 5.2"]
+    M --> C
+    M -.->|"¿el real time sale de CIAM o entra directo?"| P

@@ -1,0 +1,8 @@
+flowchart LR
+    Q["Lectura de QR"]
+    F["Campo que dice si lo generó TAPP<br/>el PSP aún no lo aterrizó"]
+    P["QRValidationRequest<br/>y este flujo de pago"]
+    O["Sigue como hoy Plin o Yape"]
+    Q --> F
+    F -->|"sí es TAPP"| P
+    F -->|"no"| O

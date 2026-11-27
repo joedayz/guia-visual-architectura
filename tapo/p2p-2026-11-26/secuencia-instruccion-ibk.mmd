@@ -1,0 +1,46 @@
+---
+title: Instrucción con cuenta cargo Interbank
+---
+%% Láminas 8 y 12, corregidas en sala.
+%% El límite por transacción es del canal. El acumulado y BPI HOST van antes de PaymentRequest.
+%% El real time de la lámina 18 entra a PRE DBFD. La sala pide el MFA directo a CIAM.
+sequenceDiagram
+    actor C as Cliente
+    participant App as App Personas
+    participant BE as Backend del app
+    participant CIAM as CIAM
+    participant PRE as PRE DBFD
+    participant LIM as BPI HOST
+    participant GW as API GW terceros PCI
+    participant PAC as PAC
+
+    Note over BE: Las cuentas afiliadas y la consulta integrada ya corrieron en el home
+    BE->>BE: Cruce. En gris si está inactiva, bloqueada, sin saldo o en modo calle
+    C->>App: Ingresa monto
+    App->>BE: Monto
+    alt Supera S/ 500
+        BE-->>App: No continúa
+    else Dentro del límite por transacción
+        BE-->>App: Cuentas IBK que pueden recibir el cargo
+        C->>App: Elige cuenta Interbank
+        BE->>BE: Push, token digital y notificaciones nativas
+        alt Alguna afiliación no está activa
+            BE-->>App: No avanza
+        else Afiliaciones activas
+            BE->>CIAM: MFA directo, sin MPA
+            BE->>PRE: Real time 5.2
+            alt Real time no aprueba
+                BE->>PRE: Post mortem 5.3
+                BE-->>App: No avanza
+            else Real time aprueba
+                BE->>LIM: Límite acumulado del canal
+                alt Acumulado no permite
+                    BE-->>App: No avanza
+                else Permite
+                    BE->>GW: PaymentRequest
+                    GW->>PAC: PaymentRequest
+                    Note over PAC: On-us, el PAC habla directo con el Proveedor de Cuentas
+                end
+            end
+        end
+    end

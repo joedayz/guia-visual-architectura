@@ -1,0 +1,10 @@
+flowchart TB
+    R["PaymentRequest"]
+    K["Callback al backend<br/>operación sin nombre"]
+    T["Timeout del canal<br/>el ejemplo hablado fue 10 s"]
+    E["Tappeo enviado"]
+    X["Tappeo exitoso o en proceso o error"]
+    R --> K
+    R --> T
+    T -->|"vence antes del callback"| E
+    K -->|"llega mientras el canal espera"| X

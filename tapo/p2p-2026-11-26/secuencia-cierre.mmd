@@ -1,0 +1,43 @@
+---
+title: Cierre del pago — callback, pantalla y avisos
+---
+%% La interfaz se ve síncrona. El PAC trabaja asíncrono y devuelve el resultado por callback.
+%% El número del timeout y el nombre de la operación no están cerrados.
+%% La alerta de cargo y abono la emite el Proveedor de Cuentas. No sale del canal.
+sequenceDiagram
+    participant PAC as PAC
+    participant BE as Backend del app
+    participant App as App Personas
+    participant PRE as PRE DBFD
+    participant SMTP as SMTP
+    participant IAP as IAP
+    participant FAV as Favoritos
+
+    PAC->>BE: Callback de PaymentRequest, operación sin nombre
+    Note over BE: El pedido ya está en el backend. Cerrar la app no corta este hilo
+
+    alt Fallido
+        BE->>PRE: Post mortem monetario fallido
+        BE-->>App: Mensaje de error, sin referencia
+    else Éxito y el canal sigue esperando
+        BE->>PRE: Post mortem monetario de éxito
+        BE-->>App: Tappeo exitoso
+    else El PAC responde en proceso
+        BE-->>App: Tappeo en proceso
+    else Venció el timeout del canal
+        BE-->>App: Tappeo enviado
+        Note over BE: El callback que llegue después igual completa los avisos
+    end
+
+    opt El cargo no usó cuenta Interbank
+        BE->>SMTP: Constancia. El detalle lo da la entidad que debitó
+    end
+    BE-->>IAP: Evidencia digital, servicio sin nombre
+
+    BE->>FAV: Consulta de tope, operación sin nombre
+    alt Ya llegó al tope
+        BE-->>App: No muestra guardar favorito
+    else Bajo el tope
+        BE-->>App: Muestra guardar favorito
+        Note over FAV: Si el alta pide OTP no está cerrado
+    end

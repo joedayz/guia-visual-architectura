@@ -1,0 +1,36 @@
+---
+title: Instrucción con cuenta cargo de otro banco
+---
+%% Lámina 13 y la explicación de sala.
+%% No hay una API aparte para la Clave Tapp. Viaja en PaymentRequest.
+%% El segundo factor además del PIN no está cerrado. No se dibuja un OTP.
+sequenceDiagram
+    actor C as Cliente
+    participant App as App Personas
+    participant CL as SDK UPI CL
+    participant BE as Backend del app
+    participant LIM as BPI HOST
+    participant GW as API GW terceros PCI
+    participant PAC as PAC
+
+    Note over BE: La cuenta ya pasó el cruce del home y no está en gris
+    C->>App: Ingresa monto
+    App->>BE: Monto
+    alt Supera S/ 500
+        BE-->>App: No continúa
+    else Dentro del límite por transacción
+        C->>App: Elige cuenta de otro banco
+        C->>App: Clave Tapp
+        App->>CL: Captura la clave
+        CL-->>App: Material de firma. La clave no se guarda
+        App->>BE: Instruye el pago
+        BE->>LIM: Límite acumulado del canal
+        alt Acumulado no permite
+            BE-->>App: No avanza
+        else Permite
+            BE->>GW: PaymentRequest
+            GW->>PAC: PaymentRequest
+            Note over PAC: El PAC valida la Clave Tapp en esta misma llamada
+            Note over PAC: Off-us, el BCRP enruta cargo y abono. El canal no lo llama
+        end
+    end

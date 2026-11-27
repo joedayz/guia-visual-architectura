@@ -1,0 +1,45 @@
+---
+title: TAPP Pagos P2P — Conceptos que el canal distingue
+---
+%% No hay esquema físico. El backend retiene la instrucción hasta el callback.
+%% Clave Tapp, OTP y PAN no son atributos de estas clases.
+classDiagram
+    class EstadoPantalla {
+        <<enumeration>>
+        EXITOSO
+        EN_PROCESO
+        ENVIADO
+        FALLIDO
+    }
+
+    class InstruccionEnCurso {
+        +String llavePago
+        +Decimal monto
+        +String directorioDestino
+        +Boolean cuentaCargoEsIbk
+        +EstadoPantalla estadoPantalla
+        +String msgId
+        +DateTime ts
+    }
+
+    class Beneficiario {
+        +String nombreResuelto
+        +String tappId
+        +String telefono
+    }
+
+    class CuentaCargo {
+        +String entidad
+        +Boolean puedeRecibirCargo
+        +String motivoDeGris
+    }
+
+    class LimiteCanal {
+        +Decimal porTransaccion
+        +Decimal acumulado
+    }
+
+    InstruccionEnCurso --> Beneficiario
+    InstruccionEnCurso --> CuentaCargo
+    InstruccionEnCurso --> EstadoPantalla
+    InstruccionEnCurso ..> LimiteCanal : el acumulado vive en BPI HOST

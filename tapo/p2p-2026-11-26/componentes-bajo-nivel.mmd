@@ -1,0 +1,69 @@
+---
+title: TAPP Pagos P2P — Componentes de bajo nivel (26-nov-2026)
+---
+%% Cada flecha al PAC usa el nombre de la lámina 18, confirmado en sala.
+%% Síncrono o asíncrono solo cuando la fuente lo dice.
+%% Línea punteada = sin contrato. El interior del PAC y del Proveedor de Cuentas no se descompone.
+flowchart TB
+    subgraph APP["App Personas"]
+        UI["Pantallas de pago<br/>llave, monto, destino, cuenta, constancia"]
+        CL["SDK UPI CL<br/>firma XML y captura de Clave Tapp"]
+        QR["Lectura de QR"]
+    end
+
+    subgraph BEZ["Backend del app · Azure"]
+        ORQ["Orquestación del pago<br/>límite por transacción S/ 500<br/>cruce de cuentas del home<br/>timeout de pantalla"]
+        RET["Pedido en curso<br/>sigue si el cliente cierra la app<br/>almacén sin nombre"]
+    end
+
+    subgraph CAP["Capacidades que el canal llama"]
+        CIAM["CIAM"]
+        PRE["PRE DBFD"]
+        LIM["BPI HOST límites"]
+        SMTP["SMTP"]
+        GW["API Gateway terceros PCI"]
+        FAV["Favoritos One App"]
+        IAP["IAP"]
+    end
+
+    subgraph PACZ["PAC · Izipay"]
+        PAC["PAC"]
+    end
+
+    UI --> ORQ
+    CL --> ORQ
+    QR --> ORQ
+    ORQ --> RET
+
+    ORQ -->|"MFA directo, sin MPA"| CIAM
+    ORQ -->|"sync real time 5.2"| PRE
+    ORQ -->|"post mortem 5.3 y monetario"| PRE
+    ORQ -->|"límite acumulado, antes de instruir"| LIM
+    ORQ -->|"constancia si el cargo no es IBK"| SMTP
+
+    ORQ --> GW
+    GW -->|"sync QRValidationRequest"| PAC
+    GW -->|"sync ValidateVPAAddress"| PAC
+    GW -->|"sync contactSwipeRequest"| PAC
+    GW -->|"sync PaymentRequest<br/>por detrás el PAC es asíncrono"| PAC
+    PAC -.->|"callback, operación sin nombre"| RET
+
+    ORQ -.->|"tope y alta, operación sin nombre"| FAV
+    ORQ -.->|"evidencia digital, operación sin nombre"| IAP
+
+    classDef app fill:#f5f5f5,stroke:#6b6b6b,color:#222
+    classDef be fill:#e3f2fb,stroke:#1f6fb2,color:#0b2a44
+    classDef cap fill:#fff1dc,stroke:#e67e22,color:#4a2a05
+    classDef pac fill:#ede7f6,stroke:#5e35b1,color:#26124d
+    classDef pendiente stroke-dasharray:5 5
+
+    class UI,CL,QR app
+    class ORQ,RET be
+    class CIAM,PRE,LIM,SMTP,GW cap
+    class PAC pac
+    class RET,FAV,IAP pendiente
+
+    style APP fill:#fafafa,stroke:#6b6b6b
+    style BEZ fill:#eef7fd,stroke:#1f6fb2
+    style CAP fill:#fff7ec,stroke:#e67e22
+    style PACZ fill:#f5f0fb,stroke:#5e35b1
